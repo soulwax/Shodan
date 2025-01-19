@@ -12,6 +12,13 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js')
 //#region REQUIRES
 const fs = require('node:fs')
 const path = require('node:path')
+const {
+  getRandom,
+  getRandomSecure,
+  rollDie,
+  rollDieSecure,
+  coinFlip // Make sure this is included in the destructuring
+} = require(`./utils/index.js`)
 const { Routes } = require('discord.js')
 const { EmbedBuilder } = require(`discord.js`)
 const responseTemplates = require('./embeds') // discord embed messages
@@ -453,6 +460,19 @@ client.on(`interactionCreate`, async (interaction) => {
       }
     }
   }
+  if (interaction.commandName === `coinflip`) {
+    try {
+      const result = coinFlip()
+      await interaction.reply({ content: `🪙 ${result}!` })
+    } catch (error) {
+      console.error('Error in coinflip command:', error)
+      await interaction.reply({
+        content: 'Error flipping coin!',
+        ephemeral: true
+      })
+    }
+  }
+
   if (interaction.commandName === `dice`) {
     const n = interaction.options.getInteger(`n`)
     const min = interaction.options.getInteger(`min`)
@@ -460,7 +480,7 @@ client.on(`interactionCreate`, async (interaction) => {
     // array of random numbers
     const randoms = []
     for (let i = 0; i < n; i++) {
-      randoms.push(responseTemplates.getRandomSecure(min, max))
+      randoms.push(getRandomSecure(min, max))
     }
 
     const message = randoms.join(`, `)
@@ -492,7 +512,7 @@ client.on(`interactionCreate`, async (interaction) => {
 
       const rolls = []
       for (let i = 0; i < numDice; i++) {
-        rolls.push(responseTemplates.rollDieSecure(numSides))
+        rolls.push(rollDieSecure(numSides))
       }
 
       const message = `You rolled ${diceNotation}: ${rolls.join(
