@@ -17,7 +17,7 @@ const {
   getRandomSecure,
   rollDie,
   rollDieSecure,
-  coinFlip // Make sure this is included in the destructuring
+  coinFlip
 } = require(`./utils/index.js`)
 const { Routes } = require('discord.js')
 const { EmbedBuilder } = require(`discord.js`)
@@ -463,7 +463,15 @@ client.on(`interactionCreate`, async (interaction) => {
   if (interaction.commandName === `coinflip`) {
     try {
       const result = coinFlip()
-      await interaction.reply({ content: `🪙 ${result}!` })
+      const embed = responseTemplates.coinflipEmbed(result)
+
+      // Add some flair with a deferred reply for "animation" effect
+      await interaction.deferReply()
+
+      // Wait a short moment for dramatic effect
+      setTimeout(async () => {
+        await interaction.editReply({ embeds: [embed] })
+      }, 1000)
     } catch (error) {
       console.error('Error in coinflip command:', error)
       await interaction.reply({

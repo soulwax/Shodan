@@ -3,6 +3,11 @@
 const { EmbedBuilder } = require(`discord.js`)
 const crypto = require('crypto')
 
+const assets = {
+  heads: '../../static/coinflip/heads.png',
+  tails: '../../static/coinflip/tails.png'
+}
+
 function errNoVoiceChannel() {
   return new EmbedBuilder()
     .setTitle(`Error`)
@@ -109,29 +114,32 @@ function purge(integer) {
     .setColor(`#ab0000`)
 }
 
-function getRandom(min, max) {
-  // number between min anx max (inclusive)
-  return Math.floor(Math.random() * (max - min + 1) + min)
-}
+function coinflipEmbed(result) {
+  const embedConfigs = {
+    Heads: {
+      color: '#FFD700', // Gold
+      emoji: '👑',
+      description: 'The coin shows...',
+      image: assets.heads
+    },
+    Tails: {
+      color: '#C0C0C0', // Silver
+      emoji: '🌟',
+      description: 'The coin lands on...',
+      image: assets.tails
+    }
+  }
 
-function getRandomSecure(min, max) {
-  // number between min anx max (inclusive)
-  return crypto.randomInt(min, max)
-}
+  const config = embedConfigs[result]
 
-function rollDie(numSides) {
-  return Math.floor(Math.random() * numSides) + 1 // Adjusted for 1-based dice
-}
-
-function rollDieSecure(numSides) {
-  return crypto.randomInt(1, numSides) // Adjusted for 1-based dice
+  return new EmbedBuilder()
+    .setTitle(`${config.emoji} Coin Flip ${config.emoji}`)
+    .setDescription(`${config.description}\n\n**${result}!**`)
+    .setColor(config.color)
+    .setTimestamp()
 }
 
 module.exports = {
-  rollDieSecure,
-  getRandomSecure,
-  rollDie,
-  getRandom,
   purge,
   errNoVoiceChannel,
   errAdmin,
@@ -145,5 +153,6 @@ module.exports = {
   noBans,
   allCommands,
   successJoinVoiceChannel,
-  errorJoinVoiceChannel
+  errorJoinVoiceChannel,
+  coinflipEmbed
 }
