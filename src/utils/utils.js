@@ -1,3 +1,5 @@
+// File: src/utils/utils.js
+
 const crypto = require('crypto')
 
 function getRandom(min, max) {
