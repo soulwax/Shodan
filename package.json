@@ -11,6 +11,8 @@
     "pm2": "pm2 start src/app.js --node-args=\"--inspect --inspect-port=7507 --harmony \" --name=Shodan",
     "tree": "rm .project_root_tree.txt && tree -a -I 'node_modules|dist|.git|.expo|.vscode|ios|android|.DS_Store' >> .project_root_tree.txt",
     "annotate": "./scripts/add_file_annotations.sh",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "clean": "rm -rf node_modules && rm package-lock.json && rm yarn.lock"
   },
   "dependencies": {
@@ -24,6 +26,7 @@
     "dotenv": "^16.4.7",
     "libsodium-wrappers": "^0.7.15",
     "openai": "^4.76.0",
+    "shodan-v2.1": "file:",
     "utf-8-validate": "^5.0.10"
   },
   "description": "A multi purpose, feature on demand, private bot for private purposes.",
