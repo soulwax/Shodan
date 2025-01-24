@@ -10,18 +10,20 @@ module.exports = {
       option
         .setName('question')
         .setDescription('Your divination request.')
-        .setRequired(false)
+        .setRequired(true)
     )
     .addBooleanOption((option) =>
       option
         .setName('wholesome')
         .setDescription('Whether to give a wholesome reading.')
         .setRequired(false)
-     )
-    .addStringOption((option) => 
+    )
+    .addStringOption((option) =>
       option
         .setName('seed')
-        .setDescription('Seed to recreate a specific reading (format: cardIndex-reversed-temp)')
+        .setDescription(
+          'Seed to recreate a specific reading (format: cardIndex-reversed-temp)'
+        )
         .setRequired(false)
     )
 }
