@@ -5,7 +5,7 @@ const {
 } = require(`discord.js`);
 const { REST } = require('@discordjs/rest')
 require(`dotenv`).config()
-const TOKEN = process.env.TOKEN
+const BOT_TOKEN = process.env.BOT_TOKEN
 const InvitesTracker = require('@androz2091/discord-invites-tracker');
 
 //#region Intents
@@ -35,7 +35,7 @@ const intents = Object.values(IntentBits).reduce((a, b) => a | b, 0)
 //#endregion
 
 //#region REST + CLIENT API + INTENTS
-const rest = new REST({ version: '10' }).setToken(TOKEN)
+const rest = new REST({ version: '10' }).setToken(BOT_TOKEN)
 
 const client = new Client({
   intents: intents
