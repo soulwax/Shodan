@@ -1,6 +1,6 @@
 // File: src/commands/ping.js
 
-const { SlashCommandBuilder } = require(`discord.js`)
+const { SlashCommandBuilder, EmbedBuilder } = require(`discord.js`)
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -9,10 +9,10 @@ module.exports = {
   //this doesn't work yet but doesn't break anything either
   async execute(interaction) {
     const ping = Date.now() - interaction.createdTimestamp.valueOf()
-    const embed = new MessageEmbed()
+    const embed = new EmbedBuilder()
       .setTitle(`Pong Motherfucker!`)
       .setDescription(`${ping}ms`)
       .setColor(`#00ffab`)
     await interaction.reply({ embeds: [embed] })
-  },
+  }
 }

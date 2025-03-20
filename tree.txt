@@ -5,8 +5,12 @@
 ├───package-lock.json
 ├───package.json
 ├───README.md
+├───tree.txt
 ├───scripts
-│   └───add_file_annotations.sh
+│   ├───add_file_annotations.sh
+│   ├───file_paths_relative-gen.py
+│   ├───rename.js
+│   └───setup-project.js
 ├───src
 │   ├───app.js
 │   ├───commands
@@ -18,20 +22,42 @@
 │   │   ├───echo.js
 │   │   ├───example.js
 │   │   ├───help.js
+│   │   ├───index.js
 │   │   ├───join.js
 │   │   ├───members.js
 │   │   ├───muse.js
 │   │   ├───ping.js
 │   │   ├───purge.js
-│   │   └───roll.js
+│   │   ├───roll.js
+│   │   ├───definitions
+│   │   │   └───index.js
+│   │   └───handlers
+│   │       ├───base-command.js
+│   │       └───divine-command.js
+│   ├───config
+│   │   ├───discord-config.js
+│   │   └───environment.js
 │   ├───embeds
 │   │   ├───index.js
 │   │   └───responses.js
+│   ├───events
+│   │   ├───index.js
+│   │   ├───definitions
+│   │   │   └───index.js
+│   │   └───handlers
+│   │       ├───base-event.js
+│   │       └───message-event.js
 │   ├───server-setup
 │   │   ├───mongo-connect.js
 │   │   └───setup-server.js
+│   ├───services
+│   │   ├───discord.js
+│   │   ├───openai.js
+│   │   └───tarot.js
 │   └───utils
+│       ├───error-handler.js
 │       ├───index.js
+│       ├───logger.js
 │       └───utils.js
 └───static
     ├───card-data.json

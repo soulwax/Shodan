@@ -1,6 +1,6 @@
 // File: src/commands/muse.js
 
-const { SlashCommandBuilder } = require(`discord.js`)
+const { SlashCommandBuilder, EmbedBuilder } = require(`discord.js`)
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -10,5 +10,5 @@ module.exports = {
   async execute(interaction) {
     // TODO: Add code to search deezer music library
     await interaction.reply(`Searching music library...`)
-  },
+  }
 }

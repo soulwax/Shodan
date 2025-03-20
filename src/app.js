@@ -41,12 +41,24 @@ const LANGUAGE_CHANNEL_ID = process.env.LANGUAGE_CHANNEL_ID
 const commands = []
 const commandFiles = fs
   .readdirSync(path.join(__dirname, `commands`))
-  .filter((file) => file.endsWith(`.js`))
+  .filter((file) => file.endsWith(`.js`) && file !== 'index.js') // Exclude index.js
 
 for (const file of commandFiles) {
-  const command = require(`./commands/${file}`)
-  commands.push(command.data.toJSON())
+  try {
+    const command = require(`./commands/${file}`)
+    if (command && command.data) {
+      commands.push(command.data.toJSON())
+    } else {
+      console.warn(
+        `Command file ${file} is missing required structure. Skipping.`
+      )
+    }
+  } catch (error) {
+    console.error(`Error loading command from file ${file}:`, error)
+  }
 }
+
+// Rest of app.js remains the same
 
 function splitLongText(text, maxLength = 1024) {
   if (text.length <= maxLength) return [text]
