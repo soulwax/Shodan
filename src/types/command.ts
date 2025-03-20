@@ -1,12 +1,17 @@
 // File: src/types/command.ts
 
-// src/types/command.ts
-
-import { ChatInputCommandInteraction, Client, SlashCommandBuilder } from 'discord.js';
+import {
+  ChatInputCommandInteraction,
+  RESTPostAPIChatInputApplicationCommandsJSONBody,
+  SlashCommandBuilder,
+  SlashCommandOptionsOnlyBuilder,
+  SlashCommandSubcommandsOnlyBuilder
+} from 'discord.js';
+import { ExtendedClient } from '../core/client';
 
 export interface Command {
-  data: SlashCommandBuilder;
-  execute: (interaction: ChatInputCommandInteraction, client: Client) => Promise<void>;
-  category?: string; // For organizing commands in help menus
-  cooldown?: number; // Cooldown in seconds
+  data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder | SlashCommandOptionsOnlyBuilder | RESTPostAPIChatInputApplicationCommandsJSONBody;
+  execute: (interaction: ChatInputCommandInteraction, client: ExtendedClient) => Promise<void>;
+  category?: string;
+  cooldown?: number;
 }

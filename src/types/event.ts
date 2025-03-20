@@ -2,8 +2,8 @@
 
 import { ClientEvents } from "discord.js";
 
-export interface Event {
-    name: keyof ClientEvents;
-    once: boolean;
-    execute: (...args: any[]) => Promise<void>;
+export interface Event<K extends keyof ClientEvents = any> {
+  name: K;
+  once: boolean;
+  execute: (...args: ClientEvents[K]) => Promise<void> | void;
 }

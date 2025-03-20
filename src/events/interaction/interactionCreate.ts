@@ -8,11 +8,10 @@ import { logger } from '../../utils/logger';
 const interactionCreateEvent: Event = {
   name: Events.InteractionCreate,
   once: false,
-  
-  async execute(interaction: Interaction) {
+  async execute(interaction: Interaction & { client: ExtendedClient }) {
+    // Handle slash commands
     if (interaction.isChatInputCommand()) {
-      const client = interaction.client as ExtendedClient;
-      const command = client.commands.get(interaction.commandName);
+      const command = interaction.client.commands.get(interaction.commandName);
       
       if (!command) {
         logger.warn(`Command ${interaction.commandName} not found`);
@@ -20,7 +19,8 @@ const interactionCreateEvent: Event = {
       }
       
       try {
-        await command.execute(interaction, client);
+        // Execute the command (no need to check for command.default)
+        await command.execute(interaction, interaction.client);
       } catch (error) {
         logger.error(`Error executing command ${interaction.commandName}:`, error);
         
@@ -36,3 +36,4 @@ const interactionCreateEvent: Event = {
 };
 
 export default interactionCreateEvent;
+

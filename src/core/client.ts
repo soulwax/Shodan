@@ -1,36 +1,17 @@
-// File: src/core/client.ts
+// File: src/types/client.ts
 
-import { Client, Collection, GatewayIntentBits } from "discord.js";
-import { Command } from "../types/command";
+import { Collection } from 'discord.js';
+import { ExtendedClient as BaseClient } from '../types/client';
+import { Command } from '../types/command';
+export interface ExtendedClient extends BaseClient {
+  commands: Collection<string, Command>;
+}
 
-/**
- * Sets up and configures the Discord client with appropriate intents
- */
+import { Client } from 'discord.js';
+
 export function setupDiscordClient() {
   const client = new Client({
-    intents: [
-      GatewayIntentBits.Guilds,
-      GatewayIntentBits.GuildMembers,
-      GatewayIntentBits.GuildBans,
-      GatewayIntentBits.GuildEmojisAndStickers,
-      GatewayIntentBits.GuildIntegrations,
-      GatewayIntentBits.GuildWebhooks,
-      GatewayIntentBits.GuildInvites,
-      GatewayIntentBits.GuildVoiceStates,
-      GatewayIntentBits.GuildPresences,
-      GatewayIntentBits.GuildMessages,
-      GatewayIntentBits.GuildMessageReactions,
-      GatewayIntentBits.GuildMessageTyping,
-      GatewayIntentBits.DirectMessages,
-      GatewayIntentBits.DirectMessageReactions,
-      GatewayIntentBits.DirectMessageTyping,
-      GatewayIntentBits.MessageContent,
-      GatewayIntentBits.GuildScheduledEvents,
-    ]
-  });
-
-  // Add commands collection to the client
-  client.commands = new Collection<string, Command>();
-  
+    intents: [] // your intents here
+  }) as ExtendedClient;
   return client;
 }

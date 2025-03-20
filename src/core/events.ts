@@ -9,35 +9,46 @@ import { logger } from '../utils/logger';
 /**
  * Registers all event handlers
  */
-export function registerEvents(client: Client) {
-  // Get all event category folders
-  const eventFolders = fs.readdirSync(path.join(__dirname, '../events'));
+export function registerEvents(client: Client): void {
+  logger.info('Registering events...');
+  
+  const eventFolders = ['guild', 'interaction', 'voice'];
   
   for (const folder of eventFolders) {
-    // Skip files, only process directories
-    if (!fs.statSync(path.join(__dirname, '../events', folder)).isDirectory()) continue;
+    const folderPath = path.join(__dirname, '../events', folder);
     
-    // Get all event files from the folder
-    const eventFiles = fs.readdirSync(path.join(__dirname, '../events', folder))
+    // Skip if folder doesn't exist yet
+    if (!fs.existsSync(folderPath)) {
+      logger.warn(`Event folder ${folder} does not exist, skipping`);
+      continue;
+    }
+    
+    const eventFiles = fs.readdirSync(folderPath)
       .filter(file => file.endsWith('.ts') || file.endsWith('.js'));
     
     for (const file of eventFiles) {
       try {
-        // Import the event module
-        const eventPath = path.join(__dirname, '../events', folder, file);
-        const event: Event = require(eventPath).default;
+        const filePath = path.join(folderPath, file);
+        // Need to use require for CommonJS compatibility
+        const event: Event = require(filePath).default;
         
-        // Register the event
-        if (event.once) {
-          client.once(event.name, (...args) => event.execute(...args, client));
-        } else {
-          client.on(event.name, (...args) => event.execute(...args, client));
+        if (!event?.name || !event?.execute) {
+          logger.warn(`Event at ${filePath} is missing required properties`);
+          continue;
         }
         
-        logger.info(`Registered event: ${event.name}`);
+        logger.info(`Registering event: ${event.name}`);
+        
+        if (event.once) {
+          client.once(event.name, (...args) => event.execute(...args));
+        } else {
+          client.on(event.name, (...args) => event.execute(...args));
+        }
       } catch (error) {
-        logger.error(`Error loading event from file ${file}:`, error);
+        logger.error(`Error loading event file ${file}:`, error);
       }
     }
   }
+  
+  logger.info('Event registration complete');
 }
