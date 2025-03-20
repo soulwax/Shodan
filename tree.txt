@@ -2,11 +2,9 @@
 ├───.env-template
 ├───.gitignore
 ├───.prettierrc
-├───.project_root_tree.txt
 ├───package-lock.json
 ├───package.json
 ├───README.md
-├───tree.txt
 ├───scripts
 │   └───add_file_annotations.sh
 ├───src
