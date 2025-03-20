@@ -134,6 +134,5 @@ dist
 
 .project_root_tree.txt
 
-scripts/setup-project.js
 **/*.backup
 src_backup

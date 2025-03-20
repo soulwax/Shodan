@@ -1,15 +1,12 @@
 // File: src/app.js
 
-// All solutions below work with discord.js@13.7.0
-
-//#region ENVIRONMENT VARIABLES
 require(`dotenv`).config()
 const BOT_TOKEN = process.env.BOT_TOKEN
 const CLIENT_ID = process.env.CLIENT_ID
 const TRACKING_CHANNEL_ID = process.env.TRACKING_CHANNEL_ID
-//#endregion
+
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js')
-//#region REQUIRES
+
 const fs = require('node:fs')
 const path = require('node:path')
 const {
@@ -21,8 +18,8 @@ const {
 } = require(`./utils/index.js`)
 const { Routes } = require('discord.js')
 const { EmbedBuilder } = require(`discord.js`)
-const responseTemplates = require('./embeds') // discord embed messages
-const setServer = require('./server-setup/setup-server') // client, tracker, rest setup
+const responseTemplates = require('./embeds')
+const setServer = require('./server-setup/setup-server')
 const crypto = require('crypto')
 const { createCanvas, loadImage } = require('canvas')
 const client = setServer.client
@@ -38,9 +35,9 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 })
 let globalGreetingsEmbed
-//#endregion
+
 const LANGUAGE_CHANNEL_ID = process.env.LANGUAGE_CHANNEL_ID
-//#region COMMANDS
+
 const commands = []
 const commandFiles = fs
   .readdirSync(path.join(__dirname, `commands`))
@@ -70,7 +67,6 @@ function splitLongText(text, maxLength = 1024) {
   if (remainingText.length > 0) parts.push(remainingText)
   return parts
 }
-//#endregion COMMANDS
 
 ;(async () => {
   try {
@@ -86,10 +82,7 @@ function splitLongText(text, maxLength = 1024) {
   }
 })()
 
-// \message\ event
 client.on('messageCreate', (message) => {
-  // This function is executed each time your bot sees a message
-  // in a server OR DM!
   console.log(JSON.stringify(message))
 })
 
@@ -97,9 +90,6 @@ client.on(`interactionCreate`, async (interaction) => {
   if (!interaction.isCommand()) return
   console.log(interaction.commandName)
   if (interaction.commandName === `ping`) {
-    // get command from interaction, then execute it's own async function
-    // const command = await commands.find((cmd) => cmd.name === interaction.commandName)
-    // await command.execute(interaction)
     const ping = Date.now() - interaction.createdTimestamp.valueOf()
     const embed = responseTemplates.pong(ping)
     await interaction.reply({ embeds: [embed] })
@@ -120,7 +110,6 @@ client.on(`interactionCreate`, async (interaction) => {
   }
 
   if (interaction.commandName === `purge`) {
-    // Get caller's permissions, he should have the \admin\ role
     let isAdmin = false
     let integer
     try {
@@ -129,7 +118,6 @@ client.on(`interactionCreate`, async (interaction) => {
       integer = interaction.options.getInteger('integer')
 
       if (!isAdmin || !integer) {
-        //send error embed message
         const embed = responseTemplates.errAdmin()
         await interaction.reply({ embeds: [embed] })
         return
@@ -144,7 +132,6 @@ client.on(`interactionCreate`, async (interaction) => {
 
     let messages = await interaction.channel.messages.fetch({ limit: integer })
 
-    // Delete messages
     await interaction.channel.bulkDelete(messages, true)
 
     const embed = responseTemplates.purge(integer)
@@ -152,14 +139,12 @@ client.on(`interactionCreate`, async (interaction) => {
   }
 
   if (interaction.commandName === `avatar`) {
-    // Get user from interaction or the first argument
     const user = interaction.options.getMentionable(`user`)
 
     const userName = user.user.tag
     const userAvatar = user.displayAvatarURL({ size: 2048 })
 
     if (!user || !userName || !userAvatar) {
-      //send error embed message
       const embed = responseTemplates.errMentionUser()
       await interaction.reply({ embeds: [embed] })
     } else {
@@ -176,32 +161,27 @@ client.on(`interactionCreate`, async (interaction) => {
       const embed = responseTemplates.noBans(guild.name)
       await interaction.reply({ embeds: [embed] })
     } else {
-      const embed = responseTemplates.bannedList(guild.name, list) // create banned list embed
+      const embed = responseTemplates.bannedList(guild.name, list)
       await interaction.reply({ embeds: [embed] })
     }
   }
 
   if (interaction.commandName === 'divine') {
     try {
-      // Defer reply since we'll be making API calls
       await interaction.deferReply()
       console.log('[DEBUG] Divine command triggered')
 
-      // First declare and initialize cardDataPath
       const cardDataPath = path.join(__dirname, '../static/card-data.json')
       console.log('[DEBUG] Loading card data from:', cardDataPath)
 
-      // Then use it to load the card data
       const cardData = JSON.parse(fs.readFileSync(cardDataPath, 'utf8'))
 
-      // Get user's question and seed if provided
       const question = interaction.options.getString('question')
       const seedParam = interaction.options.getString('seed')
       const maxTokens = 800
       console.log('[DEBUG] Question:', question)
       console.log('[DEBUG] Seed parameter:', seedParam)
 
-      // Determine card and parameters
       let cardIndex, isReversed, temperature, isWholesome
       if (seedParam) {
         const [seedIndex, seedReversed, seedTemp, seedWholesome] =
@@ -236,7 +216,6 @@ client.on(`interactionCreate`, async (interaction) => {
         isReversed ? '(reversed)' : '(upright)'
       )
 
-      // Get AI interpretation
       const sarcasticPrompt = `As a cynical, probably-possessed tarot reader who's seen too much, give an interpretation dripping with sarcasm for:
   
       Card: ${card.name} ${
@@ -315,12 +294,10 @@ client.on(`interactionCreate`, async (interaction) => {
       const aiInterpretation = completion.choices[0].message.content.trim()
       console.log('[DEBUG] Received AI interpretation')
 
-      // Create embed
       const embed = new EmbedBuilder()
         .setTitle(`🔮 ${card.name}${isReversed ? ' (Reversed)' : ''}`)
         .setColor('#9B59B6')
 
-      // Handle image attachment
       const suit =
         card.type === 'major'
           ? 'm'
@@ -337,9 +314,9 @@ client.on(`interactionCreate`, async (interaction) => {
         const num = card.value_int.toString().padStart(2, '0')
         const name = card.name
           .toLowerCase()
-          .replace(/^the\s+/i, '') // Remove leading "The"
-          .replace(/\s+last\s+/i, '') // Remove "Last" from Judgment
-          .replace(/\s+/g, '') // Remove remaining spaces
+          .replace(/^the\s+/i, '')
+          .replace(/\s+last\s+/i, '')
+          .replace(/\s+/g, '')
         imageFilename = `${suit}_${num}_${name}.jpg`
         console.log('[DEBUG] Generated filename:', imageFilename)
       } else {
@@ -359,7 +336,6 @@ client.on(`interactionCreate`, async (interaction) => {
       )
       console.log('[DEBUG] Looking for image at:', imagePath)
 
-      // Add fields to embed
       if (question) {
         embed.addFields({
           name: 'Your Question',
@@ -368,7 +344,6 @@ client.on(`interactionCreate`, async (interaction) => {
         })
       }
 
-      // Add traditional meaning
       const meaning = isReversed ? card.meaning_rev : card.meaning_up
       const meaningParts = splitLongText(meaning)
       meaningParts.forEach((part, index) => {
@@ -382,7 +357,6 @@ client.on(`interactionCreate`, async (interaction) => {
         })
       })
 
-      // Add AI interpretation
       const aiParts = splitLongText(aiInterpretation)
       aiParts.forEach((part, index) => {
         embed.addFields({
@@ -395,31 +369,25 @@ client.on(`interactionCreate`, async (interaction) => {
         })
       })
 
-      // Set footer with seed
       embed.setFooter({
         text: `The cards offer guidance, but you chart your own path. Trust your intuition.\n\nxSeed: ${cardIndex}-${
           isReversed ? '1' : '0'
         }-${temperature}-${isWholesome ? '1' : '0'}`
       })
 
-      // Handle image processing and response
       if (fs.existsSync(imagePath)) {
-        // Load and possibly rotate the image
         const img = await loadImage(imagePath)
         const canvas = createCanvas(img.width, img.height)
         const ctx = canvas.getContext('2d')
 
         if (isReversed) {
-          // Translate and rotate for reversed cards
           ctx.translate(canvas.width / 2, canvas.height / 2)
-          ctx.rotate(Math.PI) // 180 degrees
+          ctx.rotate(Math.PI)
           ctx.translate(-canvas.width / 2, -canvas.height / 2)
         }
 
-        // Draw the image
         ctx.drawImage(img, 0, 0)
 
-        // Convert canvas to buffer
         const buffer = canvas.toBuffer('image/jpeg')
 
         console.log('[DEBUG] Image found, attaching to embed')
@@ -485,7 +453,7 @@ client.on(`interactionCreate`, async (interaction) => {
     const n = interaction.options.getInteger(`n`)
     const min = interaction.options.getInteger(`min`)
     const max = interaction.options.getInteger(`max`)
-    // array of random numbers
+
     const randoms = []
     for (let i = 0; i < n; i++) {
       randoms.push(getRandomSecure(min, max))
@@ -498,10 +466,10 @@ client.on(`interactionCreate`, async (interaction) => {
   if (interaction.commandName === 'roll') {
     const diceNotation = interaction.options
       .getString('dice_notation')
-      .toLowerCase() // Convert to lowercase for case-insensitive matching
+      .toLowerCase()
 
     try {
-      const match = diceNotation.match(/(\d+)[dw](\d+)/) // Match either 'd' or 'w'
+      const match = diceNotation.match(/(\d+)[dw](\d+)/)
 
       if (!match) {
         throw new Error(
@@ -547,7 +515,6 @@ client.on(`interactionCreate`, async (interaction) => {
   }
 })
 
-// Nuke command
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return
   if (interaction.commandName === 'nuke') {
@@ -571,10 +538,8 @@ client.on(VoiceConnectionStatus.Ready, () => {
   )
 })
 
-// Join voice chat when called the /join command
 client.on(`interactionCreate`, async (interaction) => {
   if (interaction.commandName === `join`) {
-    // Get the voice channel the user is currently in
     const voiceChannel = interaction.member.voice.channel
     const embed = responseTemplates.AskToJoinVoiceChannel(voiceChannel.name)
     await interaction.reply({ embeds: [embed] })
@@ -583,9 +548,7 @@ client.on(`interactionCreate`, async (interaction) => {
       const embed = responseTemplates.errNoVoiceChannel()
       await interaction.reply({ embeds: [embed] })
     } else {
-      // Join voiceChannel
       if (voiceChannel.joinable) {
-        // Enter voice channel
         const connection = joinVoiceChannel({
           channelId: interaction.id,
           guildId: interaction.guild.id,
@@ -625,18 +588,17 @@ client.on('guildMemberAdd', async (member) => {
       'Please select your language: - Bitte wähle deine Sprache aus:'
     )
 
-  // Create a new MessageActionRow and add the buttons to it
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('english')
       .setLabel('English')
-      .setStyle(ButtonStyle.Primary), // Blue button
+      .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('german')
       .setLabel('German')
-      .setStyle(ButtonStyle.Danger) // Red button
+      .setStyle(ButtonStyle.Danger)
   )
-  // Reply in channel id LANGUAGE_CHANNEL_ID
+
   await member.guild.channels.cache.get(LANGUAGE_CHANNEL_ID).send({
     embeds: [globalGreetingsEmbed],
     components: [row],
@@ -644,14 +606,11 @@ client.on('guildMemberAdd', async (member) => {
   })
 })
 
-// Listen for the 'interactionCreate' event
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isButton()) return
   const localEmbed = new EmbedBuilder().setColor('#0099ff')
 
-  // Handle the 'english' button
   if (interaction.customId === 'english') {
-    // Get the role you want to assign
     const role = interaction.guild.roles.cache.find(
       (role) => role.name === 'EN'
     )
@@ -670,13 +629,11 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 
-  // Handle the 'other' button
   if (interaction.customId === 'german') {
-    // Handle non-English speakers
     const role = interaction.guild.roles.cache.find(
       (role) => role.name === 'DE'
     )
-    // Add the role to the member and send a confirmation message
+
     try {
       cleanupGreeterEmbed(globalGreetingsEmbed, interaction)
       await interaction.member.roles.add(role)
@@ -698,10 +655,8 @@ const cleanupGreeterEmbed = async (embed, interaction) => {
   })
 }
 
-// Leave voice chat when called the /leave command
 client.on(`interactionCreate`, async (interaction) => {
   if (interaction.commandName === `leave`) {
-    // Get the voice channel the user is currently in
     const voiceChannel = interaction.member.voice.channel
     const embed = responseTemplates.AskToLeaveVoiceChannel(voiceChannel.name)
     await interaction.reply({ embeds: [embed] })
@@ -710,7 +665,6 @@ client.on(`interactionCreate`, async (interaction) => {
       const embed = responseTemplates.errNoVoiceChannel()
       await interaction.reply({ embeds: [embed] })
     } else {
-      // Leave voiceChannel
       if (voiceChannel.joinable) {
         await voiceChannel
           .leave()
@@ -731,21 +685,17 @@ client.on(`interactionCreate`, async (interaction) => {
   }
 })
 
-//#region TRACKER
-
-// users joining on the discord server
 setServer.tracker.on('guildMemberAdd', (member, type, invite) => {
   console.log('guildMemberAdd')
-  // find channel by TRACKING_CHANNEL_ID
+
   const adminGeneral = member.guild.channels.cache.get(TRACKING_CHANNEL_ID)
 
-  // Get accurate age of account in days
   const accountAge = Math.floor(
     (Date.now() - member.user.createdAt) / (1000 * 60 * 60 * 24)
   )
 
   let accountAgeString = ''
-  // if accountAge has three digits, convert to months
+
   if (accountAge > 99) {
     const accountAgeMonths = Math.floor(accountAge / 30)
     const accountAgeDays = Math.floor(accountAge % 30)
@@ -772,7 +722,6 @@ setServer.tracker.on('guildMemberAdd', (member, type, invite) => {
     )
   }
 })
-//#endregion
 
 client.on(`ready`, () => {
   console.log(`Logged in as ${client.user.tag}!`)
