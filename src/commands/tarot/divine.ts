@@ -1,20 +1,24 @@
 // File: src/commands/tarot/divine.ts
 
-
-import { createCanvas, loadImage } from 'canvas';
-import crypto from 'crypto';
-import { ChatInputCommandInteraction, Client, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
-import fs from 'fs';
-import path from 'path';
-import { getOpenAIService } from '../../services/openai';
-import { Card } from '../../types/card'; // Import the Card interface
-import { Command } from '../../types/command';
-import { logger } from '../../utils/logger';
+import { createCanvas, loadImage } from 'canvas'
+import crypto from 'crypto'
+import {
+  ChatInputCommandInteraction,
+  Client,
+  EmbedBuilder,
+  SlashCommandBuilder
+} from 'discord.js'
+import fs from 'fs'
+import path from 'path'
+import { getOpenAIService } from '../../services/openai'
+import { Card } from '../../types/card' // Import the Card interface
+import { Command } from '../../types/command'
+import { logger } from '../../utils/logger'
 
 // Define CardData interface before using it
 interface CardData {
-  nhits: number;
-  cards: Card[];
+  nhits: number
+  cards: Card[]
 }
 
 const divineCommand: Command = {
@@ -41,75 +45,101 @@ const divineCommand: Command = {
         )
         .setRequired(false)
     ),
-  
+
   category: 'tarot',
-  
+
   async execute(interaction: ChatInputCommandInteraction, client: Client) {
     try {
-      await interaction.deferReply();
-      logger.info('[Divine] Command triggered');
+      await interaction.deferReply()
+      logger.info('[Divine] Command triggered')
 
-      const cardDataPath = path.join(__dirname, '../../../static/card-data.json');
-      logger.info(`[Divine] Loading card data from: ${cardDataPath}`);
+      const cardDataPath = path.join(
+        __dirname,
+        '../../../static/card-data.json'
+      )
+      logger.info(`[Divine] Loading card data from: ${cardDataPath}`)
 
-      const cardDataRaw = fs.readFileSync(cardDataPath, 'utf8');
-      const cardData: CardData = JSON.parse(cardDataRaw); // Fix type here
+      const cardDataRaw = fs.readFileSync(cardDataPath, 'utf8')
+      const cardData: CardData = JSON.parse(cardDataRaw) // Fix type here
 
-      const question = interaction.options.getString('question');
-      const seedParam = interaction.options.getString('seed');
-      const maxTokens = 800;
-      logger.info(`[Divine] Question: ${question}`);
-      logger.info(`[Divine] Seed parameter: ${seedParam}`);
+      const question = interaction.options.getString('question')
+      const seedParam = interaction.options.getString('seed')
+      const maxTokens = 800
+      logger.info(`[Divine] Question: ${question}`)
+      logger.info(`[Divine] Seed parameter: ${seedParam}`)
 
-      let cardIndex: number, isReversed: boolean, temperature: number, isWholesome: boolean;
+      let cardIndex: number,
+        isReversed: boolean,
+        temperature: number,
+        isWholesome: boolean
       if (seedParam) {
-        const [seedIndex, seedReversed, seedTemp, seedWholesome] = seedParam.split('-');
-        cardIndex = parseInt(seedIndex);
-        isReversed = seedReversed === '1';
-        temperature = parseFloat(seedTemp);
-        isWholesome = seedWholesome === '1';
-        logger.info('[Divine] Using seed values:', { cardIndex, isReversed, temperature, isWholesome });
+        const [seedIndex, seedReversed, seedTemp, seedWholesome] =
+          seedParam.split('-')
+        cardIndex = parseInt(seedIndex)
+        isReversed = seedReversed === '1'
+        temperature = parseFloat(seedTemp)
+        isWholesome = seedWholesome === '1'
+        logger.info('[Divine] Using seed values:', {
+          cardIndex,
+          isReversed,
+          temperature,
+          isWholesome
+        })
       } else {
-        cardIndex = crypto.randomInt(0, cardData.cards.length);
-        isReversed = crypto.randomInt(0, 2) === 1;
-        temperature = 0.7;
-        isWholesome = interaction.options.getBoolean('wholesome') ?? false;
-        logger.info('[Divine] Generated random values:', { cardIndex, isReversed, temperature, isWholesome });
+        cardIndex = crypto.randomInt(0, cardData.cards.length)
+        isReversed = crypto.randomInt(0, 2) === 1
+        temperature = 0.7
+        isWholesome = interaction.options.getBoolean('wholesome') ?? false
+        logger.info('[Divine] Generated random values:', {
+          cardIndex,
+          isReversed,
+          temperature,
+          isWholesome
+        })
       }
 
-      const card = cardData.cards[cardIndex];
-      logger.info(`[Divine] Drew card: ${card.name} ${isReversed ? '(reversed)' : '(upright)'}`);
-
+      const card = cardData.cards[cardIndex]
+      logger.info(
+        `[Divine] Drew card: ${card.name} ${
+          isReversed ? '(reversed)' : '(upright)'
+        }`
+      )
 
       // Determine suit code for filename
       const getSuitCode = (card: Card): string => {
-        if (card.type === 'major') return 'm';
-        if (card.suit === 'cups') return 'c';
-        if (card.suit === 'wands') return 'w';
-        if (card.suit === 'swords') return 's';
-        return 'p'; // pentacles
-      };
+        if (card.type === 'major') return 'm'
+        if (card.suit === 'cups') return 'c'
+        if (card.suit === 'wands') return 'w'
+        if (card.suit === 'swords') return 's'
+        return 'p' // pentacles
+      }
 
-      const suit = getSuitCode(card);
+      const suit = getSuitCode(card)
 
       // Generate filename
-      let imageFilename: string;
+      let imageFilename: string
       if (card.type === 'major') {
-        const num = card.value_int.toString().padStart(2, '0');
-        const name = card.name
+        const num = card.value_int.toString().padStart(2, '0')
+        let name = card.name
           .toLowerCase()
           .replace(/^the\s+/i, '')
           .replace(/\s+last\s+/i, '')
-          .replace(/\s+/g, '');
-        imageFilename = `${suit}_${num}_${name}.jpg`;
-        logger.info(`[Divine] Generated filename: ${imageFilename}`);
+          .replace(/\s+/g, '')
+
+        // Special case for The Hanged Man
+        if (name === 'hangedman') {
+          name = 'hanged'
+        }
+
+        imageFilename = `${suit}_${num}_${name}.jpg`
+        logger.info(`[Divine] Generated filename: ${imageFilename}`)
       } else {
         if (['page', 'knight', 'queen', 'king'].includes(card.value || '')) {
-          imageFilename = `${suit}_${card.value}.jpg`;
+          imageFilename = `${suit}_${card.value}.jpg`
         } else if (card.value === 'ace') {
-          imageFilename = `${suit}_ace.jpg`;
+          imageFilename = `${suit}_ace.jpg`
         } else {
-          imageFilename = `${suit}_${card.value_int}.jpg`;
+          imageFilename = `${suit}_${card.value_int}.jpg`
         }
       }
 
@@ -130,7 +160,9 @@ const divineCommand: Command = {
       Traditional Meaning: ${isReversed ? card.meaning_rev : card.meaning_up}
       
       Your reading should:
-      1. Be weirdly specific (unlike ${interaction.user.username}'s life choices) but also delivered with a tone of absolute patronizing superiority.
+      1. Be weirdly specific (unlike ${
+        interaction.user.username
+      }'s life choices) but also delivered with a tone of absolute patronizing superiority.
       2. Include at least one scathing comparison or metaphor that hits too close to home
       3. Give actual advice, but wrap it in layers of sarcasm
       4. Keep the mystical elements while mocking them simultaneously
@@ -142,7 +174,7 @@ const divineCommand: Command = {
   
       Make it memorable, make it hurt, but keep it under 800 characters - we don't have all day to unpack your cosmic baggage.
       
-      Remember: If someone wanted a generic reading, they'd ask their horoscope app. Now let's see what fresh hell the cards have prepared... 🔮`;
+      Remember: If someone wanted a generic reading, they'd ask their horoscope app. Now let's see what fresh hell the cards have prepared... 🔮`
 
       const wholesomePrompt = `As a warm, supportive, and genuinely caring tarot reader who sees the best in everyone, offer gentle guidance to ${
         interaction.user.username
@@ -174,12 +206,12 @@ const divineCommand: Command = {
       
       Keep your guidance concise but heartfelt - 800 characters of pure support and wisdom.
       
-      Remember: Every card holds a gift of understanding, and every seeker deserves to be met with compassion. Let's discover what light the cards have to share... ✨`;
+      Remember: Every card holds a gift of understanding, and every seeker deserves to be met with compassion. Let's discover what light the cards have to share... ✨`
 
-      const prompt = isWholesome ? wholesomePrompt : sarcasticPrompt;
+      const prompt = isWholesome ? wholesomePrompt : sarcasticPrompt
 
-      logger.info('[Divine] Requesting AI interpretation');
-      const openAIService = getOpenAIService();
+      logger.info('[Divine] Requesting AI interpretation')
+      const openAIService = getOpenAIService()
       const aiInterpretation = await openAIService.createChatCompletion(
         [{ role: 'user', content: prompt }],
         {
@@ -187,50 +219,50 @@ const divineCommand: Command = {
           temperature: temperature,
           max_tokens: maxTokens
         }
-      );
-      logger.info('[Divine] Received AI interpretation');
+      )
+      logger.info('[Divine] Received AI interpretation')
 
       const embed = new EmbedBuilder()
         .setTitle(`🔮 ${card.name}${isReversed ? ' (Reversed)' : ''}`)
-        .setColor('#9B59B6');
+        .setColor('#9B59B6')
 
       const imagePath = path.join(
         __dirname,
         '../../../static/rider-waite',
         imageFilename
-      );
-      logger.info(`[Divine] Looking for image at: ${imagePath}`);
+      )
+      logger.info(`[Divine] Looking for image at: ${imagePath}`)
 
       if (question) {
         embed.addFields({
           name: 'Your Question',
           value: question,
           inline: false
-        });
+        })
       }
 
-      const meaning = isReversed ? card.meaning_rev : card.meaning_up;
+      const meaning = isReversed ? card.meaning_rev : card.meaning_up
       const splitLongText = (text: string, maxLength = 1024): string[] => {
-        if (text.length <= maxLength) return [text];
-      
-        const parts: string[] = [];
-        let remainingText = text;
-      
+        if (text.length <= maxLength) return [text]
+
+        const parts: string[] = []
+        let remainingText = text
+
         while (remainingText.length > maxLength) {
-          let splitIndex = remainingText.lastIndexOf('.', maxLength);
+          let splitIndex = remainingText.lastIndexOf('.', maxLength)
           if (splitIndex === -1)
-            splitIndex = remainingText.lastIndexOf(' ', maxLength);
-          if (splitIndex === -1) splitIndex = maxLength;
-      
-          parts.push(remainingText.substring(0, splitIndex + 1));
-          remainingText = remainingText.substring(splitIndex + 1).trim();
+            splitIndex = remainingText.lastIndexOf(' ', maxLength)
+          if (splitIndex === -1) splitIndex = maxLength
+
+          parts.push(remainingText.substring(0, splitIndex + 1))
+          remainingText = remainingText.substring(splitIndex + 1).trim()
         }
-      
-        if (remainingText.length > 0) parts.push(remainingText);
-        return parts;
-      };
-      
-      const meaningParts = splitLongText(meaning);
+
+        if (remainingText.length > 0) parts.push(remainingText)
+        return parts
+      }
+
+      const meaningParts = splitLongText(meaning)
       meaningParts.forEach((part, index) => {
         embed.addFields({
           name:
@@ -239,10 +271,12 @@ const divineCommand: Command = {
               : 'Traditional Meaning (continued)',
           value: part,
           inline: false
-        });
-      });
+        })
+      })
 
-      const aiParts = splitLongText(aiInterpretation ?? 'No interpretation available');
+      const aiParts = splitLongText(
+        aiInterpretation ?? 'No interpretation available'
+      )
       aiParts.forEach((part, index) => {
         embed.addFields({
           name:
@@ -251,32 +285,32 @@ const divineCommand: Command = {
               : 'Personalized Reading (continued)',
           value: part,
           inline: false
-        });
-      });
+        })
+      })
 
       embed.setFooter({
         text: `The cards offer guidance, but you chart your own path. Trust your intuition.\n\nxSeed: ${cardIndex}-${
           isReversed ? '1' : '0'
         }-${temperature}-${isWholesome ? '1' : '0'}`
-      });
+      })
 
       if (fs.existsSync(imagePath)) {
         try {
-          const img = await loadImage(imagePath);
-          const canvas = createCanvas(img.width, img.height);
-          const ctx = canvas.getContext('2d');
+          const img = await loadImage(imagePath)
+          const canvas = createCanvas(img.width, img.height)
+          const ctx = canvas.getContext('2d')
 
           if (isReversed) {
-            ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.rotate(Math.PI);
-            ctx.translate(-canvas.width / 2, -canvas.height / 2);
+            ctx.translate(canvas.width / 2, canvas.height / 2)
+            ctx.rotate(Math.PI)
+            ctx.translate(-canvas.width / 2, -canvas.height / 2)
           }
 
-          ctx.drawImage(img, 0, 0);
+          ctx.drawImage(img, 0, 0)
 
-          const buffer = canvas.toBuffer('image/jpeg');
+          const buffer = canvas.toBuffer('image/jpeg')
 
-          logger.info('[Divine] Image found, attaching to embed');
+          logger.info('[Divine] Image found, attaching to embed')
           await interaction.editReply({
             embeds: [embed],
             files: [
@@ -285,17 +319,17 @@ const divineCommand: Command = {
                 name: imageFilename
               }
             ]
-          });
+          })
         } catch (err) {
-          logger.error('[Divine] Error processing image:', err);
-          await interaction.editReply({ embeds: [embed] });
+          logger.error('[Divine] Error processing image:', err)
+          await interaction.editReply({ embeds: [embed] })
         }
       } else {
-        logger.info('[Divine] Image not found, sending embed without image');
-        await interaction.editReply({ embeds: [embed] });
+        logger.info('[Divine] Image not found, sending embed without image')
+        await interaction.editReply({ embeds: [embed] })
       }
     } catch (error) {
-      logger.error('[Divine] Error in divine command:', error);
+      logger.error('[Divine] Error in divine command:', error)
       const errorEmbed = new EmbedBuilder()
         .setTitle('🔮 Error')
         .setDescription(
@@ -305,19 +339,19 @@ const divineCommand: Command = {
         .addFields({
           name: 'Error Details',
           value: 'There was an issue connecting with the mystical forces.'
-        });
+        })
 
       try {
         if (interaction.deferred) {
-          await interaction.editReply({ embeds: [errorEmbed] });
+          await interaction.editReply({ embeds: [errorEmbed] })
         } else {
-          await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+          await interaction.reply({ embeds: [errorEmbed], ephemeral: true })
         }
       } catch (replyError) {
-        logger.error('[Divine] Error sending error message:', replyError);
+        logger.error('[Divine] Error sending error message:', replyError)
       }
     }
   }
-};
+}
 
-export default divineCommand;
+export default divineCommand
