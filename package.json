@@ -1,20 +1,26 @@
 {
-  "name": "shodan-v2.1",
-  "version": "0.7.3",
+  "name": "shodan-soulwax",
+  "version": "0.8.0",
   "author": "soulwax",
   "private": true,
-  "main": "src/app.js",
+  "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",
     "dev": "ts-node-dev --inspect=7507 src/index.ts",
-    "build": "tsc",
+    "build": "rimraf dist && tsc",
+    "prebuild": "rimraf dist",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "rename": "node ./scripts/rename_tarot_cards.js",
-    "pm2": "pm2 start src/app.js --node-args=\"--inspect --inspect-port=7507 --harmony \" --name=Shodan",
+    "pm2": "pm2 start dist/index.js --name=Shodan --time",
+    "pm2:dev": "pm2 start dist/index.js --node-args=\"--inspect --inspect-port=7507\" --name=Shodan-dev --watch",
+    "pm2:stop": "pm2 stop Shodan",
+    "pm2:restart": "pm2 restart Shodan",
+    "pm2:logs": "pm2 logs Shodan",
     "tree": "rm -f .project_root_tree.txt && tree -a -I 'node_modules|dist|.git|.expo|.vscode|ios|android|.DS_Store' >> .project_root_tree.txt",
     "annotate": "./scripts/add_file_annotations.sh",
-    "clean": "rm -rf node_modules && rm package-lock.json && rm yarn.lock"
+    "clean": "rimraf node_modules dist package-lock.json yarn.lock",
+    "prepare": "npm run build"
   },
   "dependencies": {
     "@androz2091/discord-invites-tracker": "^1.2.3",
@@ -27,13 +33,13 @@
     "dotenv": "^16.4.7",
     "libsodium-wrappers": "^0.7.15",
     "openai": "^4.88.0",
-    "shodan-v2.1": "file:",
     "utf-8-validate": "6.0.5",
     "winston": "^3.17.0",
-    "zod": "^3.21.4"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/node": "^20.4.5",
+    "@types/winston": "^2.4.4",
     "@typescript-eslint/eslint-plugin": "^6.2.0",
     "@typescript-eslint/parser": "^6.2.0",
     "eslint": "^8.45.0",
