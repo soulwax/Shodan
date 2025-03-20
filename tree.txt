@@ -6,13 +6,17 @@
 ├───package.json
 ├───README.md
 ├───tree.txt
+├───tsconfig.json
 ├───scripts
 │   ├───add_file_annotations.sh
 │   ├───file_paths_relative-gen.py
 │   ├───rename.js
-│   └───setup-project.js
+│   ├───setup-project.js
+│   └───setup-ts.sh
 ├───src
 │   ├───app.js
+│   ├───app.ts
+│   ├───index.ts
 │   ├───commands
 │   │   ├───avatar.js
 │   │   ├───banned.js
@@ -23,6 +27,7 @@
 │   │   ├───example.js
 │   │   ├───help.js
 │   │   ├───index.js
+│   │   ├───index.ts
 │   │   ├───join.js
 │   │   ├───members.js
 │   │   ├───muse.js
@@ -31,33 +36,58 @@
 │   │   ├───roll.js
 │   │   ├───definitions
 │   │   │   └───index.js
-│   │   └───handlers
-│   │       ├───base-command.js
-│   │       └───divine-command.js
+│   │   ├───fun
+│   │   ├───handlers
+│   │   │   ├───base-command.js
+│   │   │   └───divine-command.js
+│   │   ├───moderation
+│   │   ├───tarot
+│   │   └───utility
+│   │       └───ping.ts
 │   ├───config
 │   │   ├───discord-config.js
-│   │   └───environment.js
+│   │   ├───discord.ts
+│   │   ├───environment.js
+│   │   └───environment.ts
+│   ├───core
+│   │   ├───client.ts
+│   │   ├───commands.ts
+│   │   └───events.ts
 │   ├───embeds
 │   │   ├───index.js
 │   │   └───responses.js
 │   ├───events
 │   │   ├───index.js
+│   │   ├───index.ts
 │   │   ├───definitions
 │   │   │   └───index.js
-│   │   └───handlers
-│   │       ├───base-event.js
-│   │       └───message-event.js
+│   │   ├───guild
+│   │   ├───handlers
+│   │   │   ├───base-event.js
+│   │   │   └───message-event.js
+│   │   ├───interaction
+│   │   │   └───interactionCreate.ts
+│   │   └───voice
 │   ├───server-setup
 │   │   ├───mongo-connect.js
 │   │   └───setup-server.js
 │   ├───services
+│   │   ├───database.ts
 │   │   ├───discord.js
 │   │   ├───openai.js
+│   │   ├───openai.ts
 │   │   └───tarot.js
+│   ├───types
+│   │   ├───command.ts
+│   │   ├───environment.ts
+│   │   └───event.ts
 │   └───utils
+│       ├───embed.ts
 │       ├───error-handler.js
 │       ├───index.js
 │       ├───logger.js
+│       ├───logger.ts
+│       ├───random.ts
 │       └───utils.js
 └───static
     ├───card-data.json

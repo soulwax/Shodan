@@ -17,17 +17,19 @@
   },
   "dependencies": {
     "@androz2091/discord-invites-tracker": "^1.2.3",
-    "@discordjs/rest": "^1.7.1",
-    "@discordjs/voice": "^0.16.1",
+    "@discordjs/rest": "2.4.3",
+    "@discordjs/voice": "0.18.0",
     "bufferutil": "^4.0.9",
-    "canvas": "^2.11.2",
+    "canvas": "3.1.0",
     "discord-api-types": "^0.37.119",
     "discord.js": "^14.18.0",
     "dotenv": "^16.4.7",
     "libsodium-wrappers": "^0.7.15",
     "openai": "^4.88.0",
     "shodan-v2.1": "file:",
-    "utf-8-validate": "^5.0.10"
+    "utf-8-validate": "6.0.5",
+    "winston": "^3.10.0",
+    "zod": "^3.21.4"
   },
   "description": "A multi purpose, feature on demand, private bot for private purposes.",
   "repository": {
