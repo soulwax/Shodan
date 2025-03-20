@@ -1,1 +1,1 @@
-<!-- File: src/config/discord.ts -->
+// File: src/config/discord.ts

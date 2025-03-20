@@ -1,4 +1,4 @@
-// src/app.ts
+// File: src/app.ts
 
 import { loadEnvironment } from './config/environment';
 import { setupDiscordClient } from './core/client';

@@ -1,1 +1,1 @@
-<!-- File: src/types/environment.ts -->
+// File: src/types/environment.ts

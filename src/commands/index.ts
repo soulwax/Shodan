@@ -1,1 +1,1 @@
-<!-- File: src/commands/index.ts -->
+// File: src/commands/index.ts

@@ -1,1 +1,1 @@
-<!-- File: src/index.ts -->
+// File: src/index.ts

@@ -1,1 +1,1 @@
-<!-- File: src/utils/random.ts -->
+// File: src/utils/random.ts

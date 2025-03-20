@@ -1,1 +1,1 @@
-<!-- File: src/utils/embed.ts -->
+// File: src/utils/embed.ts

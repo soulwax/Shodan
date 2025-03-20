@@ -78,6 +78,7 @@
 │   │   ├───openai.ts
 │   │   └───tarot.js
 │   ├───types
+│   │   ├───client.ts
 │   │   ├───command.ts
 │   │   ├───environment.ts
 │   │   └───event.ts

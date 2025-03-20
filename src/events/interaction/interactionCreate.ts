@@ -1,4 +1,4 @@
-// src/events/interaction/interactionCreate.ts
+// File: src/events/interaction/interactionCreate.ts
 
 import { Events, Interaction } from 'discord.js';
 import { ExtendedClient } from '../../types/client';

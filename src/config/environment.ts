@@ -1,4 +1,4 @@
-// src/config/environment.ts
+// File: src/config/environment.ts
 
 import dotenv from 'dotenv';
 import { z } from 'zod';

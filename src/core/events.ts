@@ -1,4 +1,4 @@
-// src/core/events.ts
+// File: src/core/events.ts
 
 import { Client } from 'discord.js';
 import fs from 'fs';

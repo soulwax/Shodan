@@ -1,1 +1,1 @@
-<!-- File: src/events/index.ts -->
+// File: src/events/index.ts

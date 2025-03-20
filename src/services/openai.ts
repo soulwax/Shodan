@@ -1,1 +1,1 @@
-<!-- File: src/services/openai.ts -->
+// File: src/services/openai.ts

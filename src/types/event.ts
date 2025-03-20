@@ -1,3 +1,5 @@
+// File: src/types/event.ts
+
 import { ClientEvents } from "discord.js";
 
 export interface Event {

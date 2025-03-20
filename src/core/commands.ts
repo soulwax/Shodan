@@ -1,4 +1,4 @@
-// src/core/commands.ts
+// File: src/core/commands.ts
 
 import { Client, Collection, REST, Routes } from 'discord.js';
 import fs from 'fs';

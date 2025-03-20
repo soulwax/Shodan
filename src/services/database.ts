@@ -1,1 +1,1 @@
-<!-- File: src/services/database.ts -->
+// File: src/services/database.ts
