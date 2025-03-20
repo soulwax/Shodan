@@ -1,5 +1,6 @@
 // File: src/commands/fun/dice.ts
 
+
 import { ChatInputCommandInteraction, Client, SlashCommandBuilder } from 'discord.js';
 import { Command } from '../../types/command';
 import { getRandomSecure } from '../../utils/random';

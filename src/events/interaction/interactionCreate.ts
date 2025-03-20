@@ -1,5 +1,6 @@
 // File: src/events/interaction/interactionCreate.ts
 
+
 import { Events, Interaction } from 'discord.js';
 import { ExtendedClient } from '../../types/client';
 import { Event } from '../../types/event';
@@ -36,4 +37,3 @@ const interactionCreateEvent: Event = {
 };
 
 export default interactionCreateEvent;
-

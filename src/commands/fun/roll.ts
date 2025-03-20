@@ -1,5 +1,6 @@
 // File: src/commands/fun/roll.ts
 
+
 import { ChatInputCommandInteraction, Client, SlashCommandBuilder } from 'discord.js';
 import { Command } from '../../types/command';
 import { rollDieSecure } from '../../utils/random';

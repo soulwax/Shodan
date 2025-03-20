@@ -1,5 +1,6 @@
 // File: src/types/card.ts
 
+
 export interface Card {
   name: string;
   type: string;

@@ -1,5 +1,6 @@
 // File: src/commands/tarot/divine.ts
 
+
 import { createCanvas, loadImage } from 'canvas';
 import crypto from 'crypto';
 import { ChatInputCommandInteraction, Client, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
