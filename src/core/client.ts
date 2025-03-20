@@ -9,10 +9,13 @@ export interface ExtendedClient extends BaseClient {
 }
 
 import { Client } from 'discord.js';
-
 export function setupDiscordClient() {
   const client = new Client({
     intents: [] // your intents here
   }) as ExtendedClient;
+  
+  // Initialize the commands collection
+  client.commands = new Collection();
+  
   return client;
 }

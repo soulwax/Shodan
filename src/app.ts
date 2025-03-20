@@ -1,6 +1,5 @@
 // File: src/app.ts
 
-
 import dotenv from 'dotenv';
 import { setupDiscordClient } from './core/client';
 import { registerCommands } from './core/commands';
@@ -26,9 +25,8 @@ async function bootstrap() {
     // Register events
     registerEvents(client);
     
-    // Login to Discord
+    // Login to Discord - but don't log username yet (let ready event handle that)
     await client.login(process.env.BOT_TOKEN);
-    logger.info(`Logged in as ${client.user?.tag}`);
     
     logger.info('Shodan Discord Bot started successfully');
   } catch (error) {
