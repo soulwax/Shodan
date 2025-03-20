@@ -1,5 +1,3 @@
-<!-- File: src/config/environment.ts -->
-
 // src/config/environment.ts
 
 import dotenv from 'dotenv';

@@ -1,8 +1,7 @@
-<!-- File: src/events/interaction/interactionCreate.ts -->
-
 // src/events/interaction/interactionCreate.ts
 
 import { Events, Interaction } from 'discord.js';
+import { ExtendedClient } from '../../types/client';
 import { Event } from '../../types/event';
 import { logger } from '../../utils/logger';
 
@@ -11,9 +10,8 @@ const interactionCreateEvent: Event = {
   once: false,
   
   async execute(interaction: Interaction) {
-    // Handle slash commands
     if (interaction.isChatInputCommand()) {
-      const command = interaction.client.commands.get(interaction.commandName);
+      const command = (interaction.client as ExtendedClient).commands.get(interaction.commandName);
       
       if (!command) {
         logger.warn(`Command ${interaction.commandName} not found`);

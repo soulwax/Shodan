@@ -28,7 +28,7 @@
     "openai": "^4.88.0",
     "shodan-v2.1": "file:",
     "utf-8-validate": "6.0.5",
-    "winston": "^3.10.0",
+    "winston": "^3.17.0",
     "zod": "^3.21.4"
   },
   "devDependencies": {

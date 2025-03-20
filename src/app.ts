@@ -1,5 +1,3 @@
-<!-- File: src/app.ts -->
-
 // src/app.ts
 
 import { loadEnvironment } from './config/environment';

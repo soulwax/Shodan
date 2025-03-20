@@ -1,5 +1,3 @@
-<!-- File: src/types/command.ts -->
-
 // src/types/command.ts
 
 import { ChatInputCommandInteraction, Client, SlashCommandBuilder } from 'discord.js';

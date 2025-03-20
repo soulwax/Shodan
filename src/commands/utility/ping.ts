@@ -1,5 +1,3 @@
-<!-- File: src/commands/utility/ping.ts -->
-
 // src/commands/utility/ping.ts
 
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';

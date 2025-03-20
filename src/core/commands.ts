@@ -1,5 +1,3 @@
-<!-- File: src/core/commands.ts -->
-
 // src/core/commands.ts
 
 import { Client, Collection, REST, Routes } from 'discord.js';

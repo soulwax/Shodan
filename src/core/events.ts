@@ -1,5 +1,3 @@
-<!-- File: src/core/events.ts -->
-
 // src/core/events.ts
 
 import { Client } from 'discord.js';
