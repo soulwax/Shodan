@@ -1,9 +1,8 @@
 // File: src/config/environment.ts
 
-
-import dotenv from 'dotenv';
-import { z } from 'zod';
-import { logger } from '../utils/logger';
+import dotenv from 'dotenv'
+import { z } from 'zod'
+import { logger } from '../utils/logger'
 
 // Define environment variable schema
 const envSchema = z.object({
@@ -11,27 +10,28 @@ const envSchema = z.object({
   CLIENT_ID: z.string(),
   TRACKING_CHANNEL_ID: z.string(),
   LANGUAGE_CHANNEL_ID: z.string().optional(),
-  OPENAI_API_KEY: z.string().optional(),
-});
+  OPENAI_API_KEY: z.string().optional()
+})
 
-type EnvVariables = z.infer<typeof envSchema>;
+type EnvVariables = z.infer<typeof envSchema>
 
 /**
  * Loads and validates environment variables
  */
 export function loadEnvironment(): EnvVariables {
-  dotenv.config();
-  
+  dotenv.config()
+
   try {
     // Validate environment variables
-    const env = envSchema.parse(process.env);
-    return env;
+    const env = envSchema.parse(process.env)
+    return env
   } catch (error) {
     if (error instanceof z.ZodError) {
-      logger.error('Invalid environment variables:', error.format());
-      throw new Error('Invalid environment configuration, check logs for details');
+      if (error instanceof z.ZodError) {
+        logger.error('Invalid environment variables:', error.format())
+      }
     }
-    throw error;
+    throw error
   }
 }
 
@@ -39,5 +39,5 @@ export function loadEnvironment(): EnvVariables {
  * Gets a validated environment variable
  */
 export function getEnv<K extends keyof EnvVariables>(key: K): EnvVariables[K] {
-  return loadEnvironment()[key];
+  return loadEnvironment()[key]
 }
