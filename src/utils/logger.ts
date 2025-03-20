@@ -1,7 +1,5 @@
 // File: src/utils/logger.ts
 
-// src/utils/logger.ts
-
 import winston from 'winston';
 
 // Create logger instance

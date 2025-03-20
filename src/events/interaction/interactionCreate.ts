@@ -11,7 +11,8 @@ const interactionCreateEvent: Event = {
   
   async execute(interaction: Interaction) {
     if (interaction.isChatInputCommand()) {
-      const command = (interaction.client as ExtendedClient).commands.get(interaction.commandName);
+      const client = interaction.client as ExtendedClient;
+      const command = client.commands.get(interaction.commandName);
       
       if (!command) {
         logger.warn(`Command ${interaction.commandName} not found`);
@@ -19,7 +20,7 @@ const interactionCreateEvent: Event = {
       }
       
       try {
-        await command.execute(interaction, interaction.client);
+        await command.execute(interaction, client);
       } catch (error) {
         logger.error(`Error executing command ${interaction.commandName}:`, error);
         
