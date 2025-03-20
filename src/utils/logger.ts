@@ -1,7 +1,15 @@
 // File: src/utils/logger.ts
 
-
 import winston from 'winston';
+
+// Custom format for colored console output
+const consoleFormat = winston.format.combine(
+  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  winston.format.colorize(),
+  winston.format.printf(({ level, message, timestamp }) => {
+    return `[${timestamp}] ${level.padEnd(7)}: ${message}`;
+  })
+);
 
 // Create logger instance
 export const logger = winston.createLogger({
@@ -15,10 +23,7 @@ export const logger = winston.createLogger({
   defaultMeta: { service: 'shodan-bot' },
   transports: [
     new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      ),
+      format: consoleFormat
     })
   ],
 });
