@@ -1,6 +1,6 @@
 {
   "name": "shodan-soulwax",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "author": "soulwax",
   "private": true,
   "main": "dist/index.js",
@@ -56,10 +56,12 @@
   "keywords": [
     "discord",
     "bot",
+    "discord bot",
+    "typescript",
+    "javascript",
+    "nodejs",
     "node",
-    "js",
-    "music",
-    "deep-learning",
+    "tarot",
     "ai"
   ],
   "license": "MIT",
