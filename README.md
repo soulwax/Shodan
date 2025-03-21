@@ -6,7 +6,7 @@
   <img src=".github/resources/logo" alt="Shodan Logo" width="50%" height="50%">
 </div>
 
-### A "getting there"-rich Discord bot powered by Discord.js and a tiny bit of OpenAI for spiciness
+### A "getting there"-rich Discord bot powered by Discord.js and a tiny bit of self made AI for spiciness
   
   ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
   ![Discord.js](https://img.shields.io/badge/Discord.js-5865F2?style=for-the-badge&logo=discord&logoColor=white)
