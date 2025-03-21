@@ -1,3 +1,5 @@
+// File: src/server-setup/setup-server.js
+
 const {
   Client
 } = require(`discord.js`);

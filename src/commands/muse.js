@@ -1,3 +1,5 @@
+// File: src/commands/muse.js
+
 const { SlashCommandBuilder } = require(`discord.js`)
 
 module.exports = {

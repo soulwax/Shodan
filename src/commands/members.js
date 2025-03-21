@@ -1,3 +1,5 @@
+// File: src/commands/members.js
+
 const { SlashCommandBuilder } = require(`discord.js`)
 
 module.exports = {

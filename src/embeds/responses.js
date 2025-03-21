@@ -1,3 +1,5 @@
+// File: src/embeds/responses.js
+
 const { EmbedBuilder } = require(`discord.js`)
 const crypto = require('crypto')
 

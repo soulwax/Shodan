@@ -1,3 +1,5 @@
+// File: src/commands/avatar.js
+
 const { SlashCommandBuilder } = require(`discord.js`)
 
 module.exports = {

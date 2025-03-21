@@ -7,7 +7,10 @@
   "scripts": {
     "start": "npm start src/app.js",
     "dev": "nodemon --inspect=7507 src/app.js",
+    "rename": "node ./scripts/rename_tarot_cards.js",
     "pm2": "pm2 start src/app.js --node-args=\"--inspect --inspect-port=7507 --harmony \" --name=Shodan",
+    "tree": "rm -f .project_root_tree.txt && tree -a -I 'node_modules|dist|.git|.expo|.vscode|ios|android|.DS_Store' >> .project_root_tree.txt",
+    "annotate": "./scripts/add_file_annotations.sh",
     "clean": "rm -rf node_modules && rm package-lock.json && rm yarn.lock"
   },
   "dependencies": {
@@ -15,16 +18,18 @@
     "@discordjs/rest": "^1.7.1",
     "@discordjs/voice": "^0.16.1",
     "bufferutil": "^4.0.8",
+    "canvas": "^2.11.2",
     "discord-api-types": "^0.37.110",
     "discord.js": "^14.16.3",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.4.7",
     "libsodium-wrappers": "^0.7.15",
+    "openai": "^4.76.0",
     "utf-8-validate": "^5.0.10"
   },
   "description": "A multi purpose, feature on demand, private bot for private purposes.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/soulwax/Shodan-v2.1.git"
+    "url": "git+https://github.com/soulwax/Shodan.git"
   },
   "keywords": [
     "discord",
@@ -37,7 +42,7 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/soulwax/Shodan-v2.1/issues"
+    "url": "https://github.com/soulwax/Shodan/issues"
   },
-  "homepage": "https://github.com/soulwax/Shodan-v2.1#readme"
+  "homepage": "https://github.com/soulwax/Shodan/blob/main/README.md"
 }

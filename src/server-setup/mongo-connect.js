@@ -1,3 +1,5 @@
+// File: src/server-setup/mongo-connect.js
+
 require('dotenv').config()
 const mongoose = require('mongoose')
 const chalk = require('chalk')

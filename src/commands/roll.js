@@ -1,3 +1,5 @@
+// File: src/commands/roll.js
+
 const { SlashCommandBuilder } = require('discord.js')
 
 module.exports = {
