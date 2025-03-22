@@ -1,6 +1,7 @@
 // File: src/utils/embed.ts
 
 
+
 import { EmbedBuilder } from 'discord.js';
 
 export function createErrorEmbed(title: string, description: string): EmbedBuilder {

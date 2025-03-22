@@ -1,5 +1,6 @@
 // File: src/app.ts
 
+
 import dotenv from 'dotenv'
 import { setupDiscordClient } from './core/client'
 import { registerCommands } from './core/commands'

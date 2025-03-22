@@ -1,6 +1,7 @@
 // File: src/commands/utility/muse.ts
 
 
+
 import { ChatInputCommandInteraction, Client, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { Command } from '../../types/command';
 

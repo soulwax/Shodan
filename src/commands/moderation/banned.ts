@@ -1,6 +1,7 @@
 // File: src/commands/moderation/banned.ts
 
 
+
 import { ChatInputCommandInteraction, Client, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { Command } from '../../types/command';
 

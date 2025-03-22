@@ -1,6 +1,7 @@
 // File: src/index.ts
 
 
+
 import bootstrap from './app';
 
 // Start the application

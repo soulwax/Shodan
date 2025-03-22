@@ -1,5 +1,6 @@
 // File: src/core/commands.ts
 
+
 import { REST, Routes, SlashCommandBuilder } from 'discord.js'
 import fs from 'fs'
 import path from 'path'

@@ -1,5 +1,6 @@
 // File: src/types/command.ts
 
+
 import {
   ChatInputCommandInteraction,
   RESTPostAPIChatInputApplicationCommandsJSONBody,

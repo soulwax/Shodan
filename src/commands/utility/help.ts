@@ -1,6 +1,7 @@
 // File: src/commands/utility/help.ts
 
 
+
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { ExtendedClient } from '../../core/client';
 import { Command } from '../../types/command';

@@ -1,6 +1,7 @@
 // File: src/core/client.ts
 
 
+
 import { Collection } from 'discord.js';
 import { ExtendedClient as BaseClient } from '../types/client';
 import { Command } from '../types/command';
