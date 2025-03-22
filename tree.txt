@@ -2,10 +2,17 @@
 ├───.env-template
 ├───.gitignore
 ├───.prettierrc
+├───LICENSE
 ├───package-lock.json
 ├───package.json
 ├───README.md
+├───tree.txt
 ├───tsconfig.json
+├───.github
+│   └───resources
+│       └───logo
+├───prisma
+│   └───schema.prisma
 ├───scripts
 │   ├───add_file_annotations.sh
 │   ├───file_paths_relative-gen.py
@@ -28,7 +35,8 @@
 │   │   │   ├───members.ts
 │   │   │   └───purge.ts
 │   │   ├───tarot
-│   │   │   └───divine.ts
+│   │   │   ├───divine.ts
+│   │   │   └───history.ts
 │   │   └───utility
 │   │       ├───avatar.ts
 │   │       ├───echo.ts
@@ -44,23 +52,20 @@
 │   │   ├───client.ts
 │   │   ├───commands.ts
 │   │   └───events.ts
-│   ├───embeds
 │   ├───events
 │   │   ├───index.ts
 │   │   ├───definitions
-│   │   │   └───index.js
+│   │   │   └───index.ts
 │   │   ├───guild
 │   │   │   └───ready.ts
-│   │   ├───handlers
-│   │   │   ├───base-event.js
-│   │   │   └───message-event.js
 │   │   ├───interaction
 │   │   │   └───interactionCreate.ts
 │   │   └───voice
-│   ├───server-setup
+│   │       └───voiceService.ts
 │   ├───services
 │   │   ├───database.ts
-│   │   └───openai.ts
+│   │   ├───openai.ts
+│   │   └───prisma.ts
 │   ├───types
 │   │   ├───card.ts
 │   │   ├───client.ts
