@@ -1,0 +1,60 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGODB_URL")
+}
+
+// User model to store user data
+model User {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  discordId     String         @unique
+  username      String
+  discriminator String?
+  avatar        String?
+  commands      Command[]
+  tarotReadings TarotReading[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+// Command model to track command usage
+model Command {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @db.ObjectId
+  guildId   String?
+  arguments Json?
+  createdAt DateTime @default(now())
+}
+
+// Tarot reading model
+model TarotReading {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String   @db.ObjectId
+  cardName       String
+  isReversed     Boolean
+  question       String?
+  interpretation String
+  createdAt      DateTime @default(now())
+  seed           String?
+}
+
+// Guild settings
+model Guild {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  discordId        String   @unique
+  name             String
+  prefix           String?  @default("!")
+  welcomeMessage   String?
+  welcomeChannelId String?
+  modLogChannelId  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
