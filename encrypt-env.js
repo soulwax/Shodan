@@ -4,7 +4,7 @@ const crypto = require('crypto');
 // Generate a key
 const key = crypto.randomBytes(32);
 const iv = crypto.randomBytes(16);
-\
+
 // Read .env file
 const envContent = fs.readFileSync('.env', 'utf8');
 
