@@ -20,6 +20,8 @@ import { PrismaClient } from '@prisma/client'
 import { logger } from '../utils/logger'
 
 // Create a global prisma instance
+// Prisma v7: connection string is configured in prisma.config.ts
+// The PrismaClient will automatically use the connection from the config file
 const prisma = new PrismaClient({
   log: [
     {
