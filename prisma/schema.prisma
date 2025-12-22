@@ -6,6 +6,7 @@ generator client {
 
 datasource db {
   provider = "mongodb"
+  url      = env("MONGODB_URL")
 }
 
 // User model to store user data

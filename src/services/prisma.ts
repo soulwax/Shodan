@@ -20,8 +20,7 @@ import { PrismaClient } from '@prisma/client'
 import { logger } from '../utils/logger'
 
 // Create a global prisma instance
-// Prisma v7: connection string is configured in prisma.config.ts
-// The PrismaClient will automatically use the connection from the config file
+// Prisma v6: MongoDB is fully supported
 const prisma = new PrismaClient({
   log: [
     {
