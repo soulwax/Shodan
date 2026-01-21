@@ -14,14 +14,32 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 // File: src/services/prisma.ts
+//
+// Prisma v7 service with PostgreSQL
+// Full Prisma v7 support enabled with PostgreSQL database
 
-
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, Prisma } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
 import { logger } from '../utils/logger'
 
-// Create a global prisma instance
-// Prisma v6: MongoDB is fully supported
+// Prisma v7 requires an adapter - using PostgreSQL adapter
+// Environment variables are loaded in index.ts before this module is imported
+
+// Get connection string from environment (loaded by dotenv in index.ts)
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL
+
+if (!connectionString) {
+  throw new Error('DATABASE_URL or POSTGRES_PRISMA_URL environment variable is required')
+}
+
+// Initialize the PostgreSQL adapter with the connection string
+const adapter = new PrismaPg({ connectionString })
+
+// Create Prisma client instance
+// Prisma v7: Auto-connects on first query, $connect() is optional
+// Using PostgreSQL adapter for direct database connection
 const prisma = new PrismaClient({
+  adapter: adapter as any, // Type assertion: PrismaPg is compatible but types need alignment
   log: [
     {
       emit: 'event',
@@ -42,31 +60,36 @@ const prisma = new PrismaClient({
   ]
 })
 
-// Set up logging for Prisma events
-prisma.$on('query', (e: { query: any }) => {
-  logger.debug(`Query: ${e.query}`)
+// Set up logging for Prisma events (v7 compatible)
+// Event types are more strictly typed in v7
+prisma.$on('query', (e: Prisma.QueryEvent) => {
+  logger.debug(`Query: ${e.query} - Duration: ${e.duration}ms`)
 })
 
-prisma.$on('error', (e: { message: any }) => {
+prisma.$on('error', (e: Prisma.LogEvent) => {
   logger.error(`Prisma error: ${e.message}`)
 })
 
-prisma.$on('info', (e: { message: any }) => {
+prisma.$on('info', (e: Prisma.LogEvent) => {
   logger.info(`Prisma info: ${e.message}`)
 })
 
-prisma.$on('warn', (e: { message: any }) => {
+prisma.$on('warn', (e: Prisma.LogEvent) => {
   logger.warn(`Prisma warning: ${e.message}`)
 })
 
 /**
  * Initialize the Prisma connection
+ * 
+ * In Prisma v7, $connect() is optional as the client auto-connects.
+ * We still call it explicitly to verify the connection and handle errors early.
  */
 export async function initPrisma(): Promise<void> {
   try {
-    // Test connection with a simple query
+    // In v7, $connect() is optional but we call it to test the connection
+    // The client will auto-connect on first query if not called explicitly
     await prisma.$connect()
-    logger.info('Successfully connected to database with Prisma')
+    logger.info('Successfully connected to PostgreSQL database with Prisma v7')
 
     // Handle graceful shutdown
     process.on('SIGINT', async () => {
@@ -86,6 +109,8 @@ export async function initPrisma(): Promise<void> {
 
 /**
  * Disconnect Prisma client
+ * 
+ * In v7, this is still required for graceful shutdown
  */
 export async function disconnectPrisma(): Promise<void> {
   await prisma.$disconnect()

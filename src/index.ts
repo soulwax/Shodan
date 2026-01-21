@@ -15,12 +15,15 @@
 
 // File: src/index.ts
 
+// Load environment variables FIRST, before any other imports
+// This ensures DATABASE_URL is available when Prisma service is imported
+import dotenv from 'dotenv'
+dotenv.config()
 
-
-import bootstrap from './app';
+import bootstrap from './app'
 
 // Start the application
 bootstrap().catch(error => {
-  console.error('Failed to start application:', error);
-  process.exit(1);
-});
+  console.error('Failed to start application:', error)
+  process.exit(1)
+})

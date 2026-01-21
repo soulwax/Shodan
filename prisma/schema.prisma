@@ -1,17 +1,18 @@
 // This is your Prisma schema file
+// Prisma v7 with PostgreSQL - Full v7 support enabled
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mongodb"
-  url      = env("MONGODB_URL")
+  provider = "postgresql"
+  // Connection URL is configured in prisma/config.ts for Prisma v7
 }
 
 // User model to store user data
 model User {
-  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  id            String         @id @default(uuid())
   discordId     String         @unique
   username      String
   discriminator String?
@@ -24,10 +25,10 @@ model User {
 
 // Command model to track command usage
 model Command {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(uuid())
   name      String
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
   guildId   String?
   arguments Json?
   createdAt DateTime @default(now())
@@ -35,24 +36,27 @@ model Command {
 
 // Tarot reading model
 model TarotReading {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  user           User     @relation(fields: [userId], references: [id])
-  userId         String   @db.ObjectId
+  id             String   @id @default(uuid())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
   cardName       String
   isReversed     Boolean
   question       String?
-  interpretation String
+  interpretation String   @db.Text
   createdAt      DateTime @default(now())
   seed           String?
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 // Guild settings
 model Guild {
-  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  id               String   @id @default(uuid())
   discordId        String   @unique
   name             String
   prefix           String?  @default("!")
-  welcomeMessage   String?
+  welcomeMessage   String?  @db.Text
   welcomeChannelId String?
   modLogChannelId  String?
   createdAt        DateTime @default(now())
