@@ -27,6 +27,7 @@ const helpCommand: Command = {
     .setDescription('Lists all commands.'),
 
   category: 'utility',
+  cooldown: 5,
 
   async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
     const embed = new EmbedBuilder()

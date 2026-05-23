@@ -46,18 +46,53 @@ export class OpenAIService {
   ) {
     try {
       const { model = 'gpt-4-1106-preview', temperature = 0.7, max_tokens = 1000 } = options;
-      
+
       const response = await this.client.chat.completions.create({
         model,
         messages,
         temperature,
         max_tokens
       });
-      
+
       return response.choices[0].message.content;
     } catch (error) {
       logger.error('Error generating OpenAI completion:', error);
       throw new Error('Failed to generate AI response');
+    }
+  }
+
+  async createVisionCompletion(
+    systemPrompt: string,
+    textPrompt: string,
+    imageUrl: string,
+    options: {
+      temperature?: number,
+      max_tokens?: number
+    } = {}
+  ) {
+    try {
+      const { temperature = 0.9, max_tokens = 300 } = options;
+
+      const response = await this.client.chat.completions.create({
+        model: 'gpt-4o',
+        temperature,
+        max_tokens,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: [
+              { type: 'image_url', image_url: { url: imageUrl, detail: 'low' } },
+              { type: 'text', text: textPrompt }
+            ]
+          }
+        ]
+      });
+
+      return response.choices[0].message.content;
+    } catch (error) {
+      logger.error('Error generating OpenAI vision completion:', error);
+      throw new Error('Failed to generate AI vision response');
     }
   }
 }

@@ -27,7 +27,8 @@ const bannedCommand: Command = {
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
   
   category: 'moderation',
-  
+  cooldown: 10,
+
   async execute(interaction: ChatInputCommandInteraction, client: Client) {
     if (!interaction.guild) {
       await interaction.reply({ content: 'This command can only be used in a server.', ephemeral: true });

@@ -64,6 +64,7 @@ const divineCommand: Command = {
     ),
 
   category: 'tarot',
+  cooldown: 30,
 
   async execute(interaction: ChatInputCommandInteraction, client: Client) {
     try {
@@ -160,70 +161,25 @@ const divineCommand: Command = {
         }
       }
 
-      const sarcasticPrompt = `As a cynical, probably-possessed tarot reader who's seen too much, give an interpretation dripping with sarcasm for:
-      
-      Card: ${card.name} ${
-        isReversed
-          ? '(Reversed, because of course it is)'
-          : '(Upright, at least something went right)'
-      }
-      ${
-        question
-          ? `Question: ${question} (wow, really going for the deep ones here)`
-          : "No question? Typical. Let's see what cosmic mess awaits..."
-      }
-      
-      Card Description: ${card.desc}
-      Traditional Meaning: ${isReversed ? card.meaning_rev : card.meaning_up}
-      
-      Your reading should:
-      1. Be weirdly specific (unlike ${
-        interaction.user.username
-      }'s life choices) but also delivered with a tone of absolute patronizing superiority.
-      2. Include at least one scathing comparison or metaphor that hits too close to home
-      3. Give actual advice, but wrap it in layers of sarcasm
-      4. Keep the mystical elements while mocking them simultaneously
-      5. Be as subtle as a brick through a window (bonus points for painful truths)
-      6. Make it hurt a little less if it's a good card, or a little more if it's a bad one.
-      7. The last paragraph should be an encouraging message, but with a twist of cosmic irony.
-      8. You are not reddit, remember that. Do not use redditor smugness.
-      9. Add unpredictability to your rhetoric but stay close to the card's essence and question asked.
-  
-      Make it memorable, make it hurt, but keep it under 800 characters - we don't have all day to unpack your cosmic baggage.
-      
-      Remember: If someone wanted a generic reading, they'd ask their horoscope app. Now let's see what fresh hell the cards have prepared... 🔮`
+      const sarcasticPrompt = `you're a tarot reader who's been at this too long and has seen every kind of fool walk through the door. you're not mean, just deeply, deeply tired of everyone's nonsense — including ${interaction.user.username}'s. give a reading that's actually useful but wrapped in enough sarcasm that they'll remember it.
 
-      const wholesomePrompt = `As a warm, supportive, and genuinely caring tarot reader who sees the best in everyone, offer gentle guidance to ${
-        interaction.user.username
-      }:
+card: ${card.name}${isReversed ? ' — reversed, naturally' : ' — upright, congrats on that at least'}
+${question ? `they want to know: "${question}" — sure, let's do this` : "they didn't even ask a question. classic."}
 
-      Card: ${card.name} ${
-        isReversed
-          ? '(Reversed, but remember - every shadow holds a lesson)'
-          : '(Upright, radiating with possibility)'
-      }
-      ${
-        question
-          ? `Question: "${question}" (what a thoughtful inquiry, let's explore this together)`
-          : 'No question posed - sometimes the most profound answers come from open-hearted reflection.'
-      }
-      
-      Card Description: ${card.desc}
-      Traditional Meaning: ${isReversed ? card.meaning_rev : card.meaning_up}
-      
-      Your reading should:
-      1. Highlight ${interaction.user.username}'s inner strength and potential
-      2. Include a nurturing metaphor that brings comfort and clarity
-      3. Offer practical, encouraging advice that empowers growth
-      4. Honor both the mystical wisdom and human experience
-      5. Find the silver lining, even in challenging cards
-      6. Share a personal observation that shows deep understanding
-      7. End with a genuinely uplifting message of hope
-      8. Channel the energy of a warm cup of tea shared between dear friends
-      
-      Keep your guidance concise but heartfelt - 800 characters of pure support and wisdom.
-      
-      Remember: Every card holds a gift of understanding, and every seeker deserves to be met with compassion. Let's discover what light the cards have to share... ✨`
+what the card means: ${card.desc}
+the traditional read on this: ${isReversed ? card.meaning_rev : card.meaning_up}
+
+keep it under 800 characters. be specific, be a little sharp, sneak in a genuine insight somewhere so it lands. end with something that stings a little but isn't actually cruel. no numbered lists, no bullet points — just talk like a person.`
+
+      const wholesomePrompt = `you're a tarot reader who genuinely cares about the people who come to you. you're warm but not saccharine — you say real things, you notice details, and you make people feel like someone actually listened. give ${interaction.user.username} a reading that means something.
+
+card: ${card.name}${isReversed ? ' (reversed — not a bad thing, just a different angle)' : ' (upright)'}
+${question ? `their question: "${question}"` : "they came without a question — sometimes that's where the best readings happen."}
+
+what the card means: ${card.desc}
+the traditional read: ${isReversed ? card.meaning_rev : card.meaning_up}
+
+keep it under 800 characters. find the real thing in this card and connect it to them — not in a generic "you have so much potential" way, in a "here's something worth actually sitting with" way. no lists, no headers, just talk.`
 
       const prompt = isWholesome ? wholesomePrompt : sarcasticPrompt
 

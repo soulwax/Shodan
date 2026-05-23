@@ -30,6 +30,7 @@ const pingCommand: Command = {
     .setDescription('Replies with the bot latency'),
 
   category: 'utility',
+  cooldown: 3,
 
   async execute(interaction: ChatInputCommandInteraction, client: Client) {
     const sent = await interaction.deferReply({ fetchReply: true })

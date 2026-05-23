@@ -32,7 +32,8 @@ const avatarCommand: Command = {
     ),
   
   category: 'utility',
-  
+  cooldown: 3,
+
   async execute(interaction: ChatInputCommandInteraction, client: Client) {
     const user = interaction.options.getMentionable('user');
     

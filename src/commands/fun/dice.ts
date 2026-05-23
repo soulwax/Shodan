@@ -50,6 +50,7 @@ const diceCommand: Command = {
     .toJSON(),
 
   category: 'fun',
+  cooldown: 3,
 
   async execute(interaction: ChatInputCommandInteraction, client: Client) {
     let n = interaction.options.getInteger('n')!

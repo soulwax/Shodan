@@ -26,7 +26,7 @@
     "tree": "rm -f .project_root_tree.txt && tree -a -I 'node_modules|dist|.git|.expo|.vscode|ios|android|.DS_Store' >> .project_root_tree.txt",
     "annotate": "./scripts/add_file_annotations.sh",
     "clean": "rimraf node_modules dist package-lock.json yarn.lock",
-    "prepare": "npm run build"
+    "prepare": "prisma generate && npm run build"
   },
   "dependencies": {
     "@androz2091/discord-invites-tracker": "^1.2.3",

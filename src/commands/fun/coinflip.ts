@@ -33,6 +33,7 @@ const coinflipCommand: Command = {
     .setDescription('Flips a coin to determine heads or tails.'),
 
   category: 'fun',
+  cooldown: 3,
 
   async execute(interaction: ChatInputCommandInteraction, client: Client) {
     // First, defer the reply to buy time for the "dramatic effect"

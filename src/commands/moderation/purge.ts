@@ -41,6 +41,7 @@ const purgeCommand: Command = {
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
   category: 'moderation',
+  cooldown: 5,
 
   async execute(interaction: ChatInputCommandInteraction, client: Client) {
     try {

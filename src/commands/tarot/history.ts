@@ -40,6 +40,7 @@ const historyCommand: Command = {
     ),
 
   category: 'tarot',
+  cooldown: 10,
 
   async execute(interaction: ChatInputCommandInteraction, client: Client) {
     try {

@@ -33,7 +33,8 @@ const echoCommand: Command = {
     .toJSON(),
   
   category: 'utility',
-  
+  cooldown: 3,
+
   async execute(interaction: ChatInputCommandInteraction, client: Client) {
     const message = interaction.options.getString('message');
     

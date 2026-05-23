@@ -33,7 +33,8 @@ const rollCommand: Command = {
     ) as SlashCommandBuilder,
   
   category: 'fun',
-  
+  cooldown: 3,
+
   async execute(interaction: ChatInputCommandInteraction, client: Client) {
     const diceNotation = interaction.options.getString('dice_notation')!.toLowerCase();
 
