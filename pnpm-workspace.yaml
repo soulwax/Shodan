@@ -1,0 +1,6 @@
+allowBuilds:
+  '@prisma/engines': set this to true or false
+  bufferutil: set this to true or false
+  canvas: set this to true or false
+  prisma: set this to true or false
+  utf-8-validate: set this to true or false
