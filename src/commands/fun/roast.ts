@@ -23,11 +23,17 @@ import { logger } from '../../utils/logger';
 const roastCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('roast')
-    .setDescription('Roast a server member with AI-powered savagery')
+    .setDescription('Roast a server member. Lovingly. Mostly.')
     .addUserOption((option) =>
       option
         .setName('target')
         .setDescription('The unfortunate soul to roast (leave blank to roast yourself)')
+        .setRequired(false)
+    )
+    .addStringOption((option) =>
+      option
+        .setName('topic')
+        .setDescription('What to roast them about specifically (optional)')
         .setRequired(false)
     ),
 
@@ -38,6 +44,7 @@ const roastCommand: Command = {
     await interaction.deferReply();
 
     const targetUser = interaction.options.getUser('target') ?? interaction.user;
+    const topic = interaction.options.getString('topic');
     const isSelf = targetUser.id === interaction.user.id;
     const member = interaction.guild?.members.cache.get(targetUser.id) as GuildMember | undefined;
 
@@ -52,27 +59,37 @@ const roastCommand: Command = {
     const accountAgeDays = Math.floor((Date.now() - targetUser.createdAt.getTime()) / 86400000);
     const avatarUrl = targetUser.displayAvatarURL({ size: 256, extension: 'png' });
 
-    const systemPrompt = `you're a roast comedian at a comedy club. keep it short — two to four sentences, max. be funny and a little mean but don't go after anything genuinely hurtful. no slurs, no body-shaming, keep it the kind of thing you'd say to someone's face at a party and they'd laugh. use whatever you know about them — their name, their roles, how long they've been around, their pfp.`;
+    const topicLine = topic
+      ? `focus the roast specifically on: ${topic}`
+      : `roast them generally — their choices, their vibe, whatever the pfp gives you`;
+
+    // System prompt engineered to suppress AI-isms and produce natural human-sounding output
+    const systemPrompt = `you're the witty one in a friend group — always have the sharp line ready but you're not actually cruel about it. when you roast someone it sounds like a person talking, not a bit. write two or three sentences max.
+
+hard rules: no bullet points, no numbered lists, no em-dashes doing heavy lifting, no "look," "well," "oh," "listen," or "alright" as openers. don't start with their name. don't end with a compliment to soften the blow — that's weak. don't say anything that would get you kicked out of a dinner party. no slurs, no body-shaming, no mental health stuff. just smart, a little mean, funny. write it the way you'd actually say it to their face, not like you're performing it.`;
 
     const textPrompt = isSelf
-      ? `roast this person. they go by "${displayName}" on discord, username ${targetUser.username}. their account is ${accountAgeDays} days old. their roles are: ${roles}.${joinedDaysAgo !== null ? ` they've been on this server for ${joinedDaysAgo} days.` : ''} here's the kicker — they asked for this themselves. that's fair game. their profile pic is in the image, use it if there's something there.`
-      : `roast this person. they go by "${displayName}" on discord, username ${targetUser.username}. their account is ${accountAgeDays} days old. their roles are: ${roles}.${joinedDaysAgo !== null ? ` they've been on this server for ${joinedDaysAgo} days.` : ''} their profile pic is in the image, use it if there's something there. ${interaction.user.username} is the one asking for this, not them.`;
+      ? `roast this person. they go by "${displayName}", username ${targetUser.username}. account ${accountAgeDays} days old. roles: ${roles}.${joinedDaysAgo !== null ? ` on this server ${joinedDaysAgo} days.` : ''} they asked for this themselves — that's already something. ${topicLine}. pfp is in the image, use it if there's material there.`
+      : `roast this person. they go by "${displayName}", username ${targetUser.username}. account ${accountAgeDays} days old. roles: ${roles}.${joinedDaysAgo !== null ? ` on this server ${joinedDaysAgo} days.` : ''} ${interaction.user.username} is the one asking. ${topicLine}. pfp is in the image, use it if there's material there.`;
 
     try {
       const openai = getOpenAIService();
-      const roast = await openai.createVisionCompletion(systemPrompt, textPrompt, avatarUrl);
+      const roast = await openai.createVisionCompletion(systemPrompt, textPrompt, avatarUrl, {
+        temperature: 1.0,
+        max_tokens: 200
+      });
 
       if (!roast) throw new Error('Empty response from OpenAI');
 
       const embed = new EmbedBuilder()
         .setColor(0xff4500)
-        .setTitle(`🔥 Roast: ${displayName}`)
+        .setTitle(`🔥 ${displayName} got cooked`)
         .setDescription(roast)
         .setThumbnail(avatarUrl)
         .setFooter({
           text: isSelf
             ? `${interaction.user.username} asked for this. Respect.`
-            : `Requested by ${interaction.user.username}`
+            : `fired by ${interaction.user.username}`
         });
 
       logger.info(`[Roast] ${interaction.user.username} roasted ${targetUser.username}`);

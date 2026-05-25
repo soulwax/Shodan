@@ -23,11 +23,17 @@ import { logger } from '../../utils/logger';
 const complimentCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('compliment')
-    .setDescription('Shower a server member with AI-crafted praise')
+    .setDescription('Say something genuinely nice to someone for once.')
     .addUserOption((option) =>
       option
         .setName('target')
         .setDescription('Who deserves the kind words? (leave blank to compliment yourself)')
+        .setRequired(false)
+    )
+    .addStringOption((option) =>
+      option
+        .setName('topic')
+        .setDescription('What to compliment them about specifically (optional)')
         .setRequired(false)
     ),
 
@@ -38,6 +44,7 @@ const complimentCommand: Command = {
     await interaction.deferReply();
 
     const targetUser = interaction.options.getUser('target') ?? interaction.user;
+    const topic = interaction.options.getString('topic');
     const isSelf = targetUser.id === interaction.user.id;
     const member = interaction.guild?.members.cache.get(targetUser.id) as GuildMember | undefined;
 
@@ -52,27 +59,37 @@ const complimentCommand: Command = {
     const accountAgeDays = Math.floor((Date.now() - targetUser.createdAt.getTime()) / 86400000);
     const avatarUrl = targetUser.displayAvatarURL({ size: 256, extension: 'png' });
 
-    const systemPrompt = `you're a friend who's really good at making people feel seen. write two to four sentences that actually mean something — specific, warm, a bit clever. no generic stuff like "you're so kind and wonderful". use what you know about them: their name, their roles, how long they've been around, their pfp. make it feel like it came from a real person, not a greeting card.`;
+    const topicLine = topic
+      ? `focus the compliment specifically on: ${topic}`
+      : `compliment something real about them — their presence, their choices, whatever the details give you`;
+
+    // System prompt engineered to suppress AI-isms and produce natural human-sounding warmth
+    const systemPrompt = `you're the person in the group who actually notices things about people and says so. when you give someone a compliment it doesn't feel like a form letter — it lands because it's specific. write two or three sentences, no more.
+
+hard rules: no bullet points, no lists, no em-dashes doing heavy lifting. don't start with "you are" or their name. don't open with "i" either. no filler like "truly," "honestly," "genuinely," "absolutely," "amazing," "incredible," or "wonderful." no greeting-card energy. don't be sappy. be warm the way a real person is warm — with a little wit, a little edge, not drowning in adjectives. write it like you'd actually say it, not like you're writing a speech.`;
 
     const textPrompt = isSelf
-      ? `say something genuinely nice about this person. they go by "${displayName}", username ${targetUser.username}. account is ${accountAgeDays} days old. their roles: ${roles}.${joinedDaysAgo !== null ? ` been on this server ${joinedDaysAgo} days.` : ''} they asked for a compliment themselves — honestly that takes guts, lean into it. their pfp is in the image, if something catches your eye say something about it.`
-      : `say something genuinely nice about this person. they go by "${displayName}", username ${targetUser.username}. account is ${accountAgeDays} days old. their roles: ${roles}.${joinedDaysAgo !== null ? ` been on this server ${joinedDaysAgo} days.` : ''} their pfp is in the image, if something catches your eye say something about it. ${interaction.user.username} wanted them to hear something good today.`;
+      ? `say something genuinely nice about this person. they go by "${displayName}", username ${targetUser.username}. account ${accountAgeDays} days old. roles: ${roles}.${joinedDaysAgo !== null ? ` on this server ${joinedDaysAgo} days.` : ''} they asked for a compliment themselves — that takes a specific kind of confidence, work with it. ${topicLine}. pfp is in the image, if something catches your eye use it.`
+      : `say something genuinely nice about this person. they go by "${displayName}", username ${targetUser.username}. account ${accountAgeDays} days old. roles: ${roles}.${joinedDaysAgo !== null ? ` on this server ${joinedDaysAgo} days.` : ''} ${interaction.user.username} wanted them to hear something good today. ${topicLine}. pfp is in the image, if something catches your eye use it.`;
 
     try {
       const openai = getOpenAIService();
-      const compliment = await openai.createVisionCompletion(systemPrompt, textPrompt, avatarUrl);
+      const compliment = await openai.createVisionCompletion(systemPrompt, textPrompt, avatarUrl, {
+        temperature: 0.9,
+        max_tokens: 200
+      });
 
       if (!compliment) throw new Error('Empty response from OpenAI');
 
       const embed = new EmbedBuilder()
         .setColor(0x57f287)
-        .setTitle(`💚 Compliment: ${displayName}`)
+        .setTitle(`💚 ${displayName}`)
         .setDescription(compliment)
         .setThumbnail(avatarUrl)
         .setFooter({
           text: isSelf
             ? `${interaction.user.username} knows their worth.`
-            : `With love from ${interaction.user.username}`
+            : `from ${interaction.user.username}`
         });
 
       logger.info(`[Compliment] ${interaction.user.username} complimented ${targetUser.username}`);

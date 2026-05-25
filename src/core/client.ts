@@ -17,17 +17,22 @@
 
 
 
-import { Collection } from 'discord.js';
+import { Client, Collection, GatewayIntentBits } from 'discord.js';
 import { ExtendedClient as BaseClient } from '../types/client';
 import { Command } from '../types/command';
 export interface ExtendedClient extends BaseClient {
   commands: Collection<string, Command>;
 }
 
-import { Client } from 'discord.js';
 export function setupDiscordClient() {
   const client = new Client({
-    intents: [] // your intents here
+    intents: [
+      GatewayIntentBits.Guilds,
+      // Privileged — enable in Discord Developer Portal → Bot → Privileged Gateway Intents
+      GatewayIntentBits.GuildMembers,
+      GatewayIntentBits.GuildVoiceStates,
+      GatewayIntentBits.GuildModeration,
+    ]
   }) as ExtendedClient;
   
   // Initialize the commands collection
