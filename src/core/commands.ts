@@ -65,7 +65,7 @@ export async function registerCommands(client: ExtendedClient): Promise<void> {
     }
 
     // Then, load TypeScript commands from category directories
-    const commandFolders = ['utility', 'moderation', 'fun', 'tarot']
+    const commandFolders = ['utility', 'moderation', 'fun', 'tarot', 'dnd']
 
     for (const folder of commandFolders) {
       const folderPath = path.join(commandsDir, folder)

@@ -41,6 +41,7 @@
     "dotenv": "^16.6.1",
     "libsodium-wrappers": "^0.7.16",
     "openai": "^4.104.0",
+    "pdf-parse": "^2.4.5",
     "pg": "^8.20.0",
     "utf-8-validate": "6.0.5",
     "winston": "^3.19.0",

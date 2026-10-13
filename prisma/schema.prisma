@@ -62,3 +62,63 @@ model Guild {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
+
+enum DndTransactionType {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+// D&D data is partitioned by Discord server. Each server has its own wallets,
+// so a member's gold in one server is never visible to another server.
+model DndServer {
+  id                 String       @id @default(uuid())
+  discordId          String       @unique
+  name               String
+  aiNarrationEnabled Boolean      @default(true)
+  campaigns          DndCampaign[]
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+}
+
+model DndCampaign {
+  id         String       @id @default(uuid())
+  serverId   String
+  name       String
+  gameSystem String       @default("D&D 5e")
+  isDefault  Boolean      @default(false)
+  server     DndServer    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  wallets    DndWallet[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@unique([serverId, name])
+  @@index([serverId])
+}
+
+model DndWallet {
+  id              String           @id @default(uuid())
+  campaignId      String
+  discordUserId   String
+  goldGp          BigInt           @default(0)
+  campaign        DndCampaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  transactions    DndTransaction[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([campaignId, discordUserId])
+  @@index([campaignId])
+}
+
+model DndTransaction {
+  id                  String              @id @default(uuid())
+  walletId            String
+  discordInteractionId String              @unique
+  type                DndTransactionType
+  amountGp            BigInt
+  balanceAfterGp      BigInt
+  narration           String?             @db.Text
+  wallet              DndWallet           @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  createdAt           DateTime            @default(now())
+
+  @@index([walletId, createdAt])
+}

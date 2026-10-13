@@ -53,6 +53,12 @@ Nothing is being logged, so you can be sure that your privacy is respected. This
 - `/describe` turns an uploaded image into a short narration in a style you choose
 - AI replies automatically try configured providers in this order: OpenAI, Gemini, Grok, then Claude
 
+### 🐉 D&D
+
+- `/store gp:<amount>` deposits gold into a wallet private to the member, campaign, and Discord server
+- `/balance` shows that campaign-specific wallet; deposits are recorded in an auditable ledger
+- The AI adds a short bankkeeper reaction, while the database remains the source of truth for balances
+
 ## 📋 Requirements
 
 - Node.js 16.x or higher
