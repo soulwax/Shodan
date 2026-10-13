@@ -31,6 +31,7 @@ const MAX_CONCURRENT_REQUESTS_PER_PROVIDER = 2;
 const MAX_QUEUED_REQUESTS_PER_PROVIDER = 20;
 const MAX_TRANSIENT_RETRIES = 2;
 const RETRY_DELAYS_MS = [1_000, 3_000];
+const PROVIDER_REQUEST_TIMEOUT_MS = 30_000;
 
 class ProviderHttpError extends Error {
   constructor(message: string, readonly status: number, readonly retryAfterMs?: number) {
@@ -77,6 +78,25 @@ async function providerHttpError(provider: string, response: Response): Promise<
     ? Math.max(0, seconds * 1000)
     : Number.isFinite(retryAt) ? Math.max(0, retryAt) : undefined;
   return new ProviderHttpError(`${provider} API returned HTTP ${response.status}: ${message}`, response.status, retryAfterMs);
+}
+
+async function fetchWithProviderTimeout(
+  provider: string,
+  input: string | URL,
+  init?: RequestInit
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), PROVIDER_REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(`${provider} request timed out after ${PROVIDER_REQUEST_TIMEOUT_MS / 1000} seconds`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 const providerNames: Record<Provider, string> = {
@@ -157,6 +177,7 @@ export class AIService {
     }
 
     let lastError: unknown;
+    const failures: string[] = [];
     for (const provider of providers) {
       try {
         const response = await this.withProviderRetries(provider, () =>
@@ -172,6 +193,7 @@ export class AIService {
         lastError = error;
         const status = errorStatus(error);
         const detail = error instanceof Error ? error.message : 'Unknown error';
+        failures.push(`${providerNames[provider]}: ${detail}`);
         logger.warn(`${providerNames[provider]} request failed${status ? ` with HTTP ${status}` : ''}: ${detail}; trying the next configured provider`);
       }
     }
@@ -180,7 +202,7 @@ export class AIService {
     if (lastError instanceof Error) {
       logger.error(`Final AI provider error: ${lastError.name}`);
     }
-    throw new Error('All configured AI providers failed to generate a response');
+    throw new Error(`All configured AI providers failed to generate a response. ${failures.join(' | ')}`);
   }
 
   private getProviderQueue(provider: Provider): ProviderQueue {
@@ -268,6 +290,8 @@ export class AIService {
   ): Promise<string | null> {
     const client = new OpenAI({
       apiKey: this.apiKeys[provider]!,
+      timeout: PROVIDER_REQUEST_TIMEOUT_MS,
+      maxRetries: 0,
       ...(provider === 'grok' ? { baseURL: 'https://api.x.ai/v1' } : {})
     });
     const model = provider === 'grok' ? 'grok-4.7' : options.model || 'gpt-4.1-mini';
@@ -310,7 +334,7 @@ export class AIService {
         ]
       }));
     const systemInstruction = messages.find(message => message.role === 'system')?.content;
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent', {
+    const response = await fetchWithProviderTimeout('Gemini', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-goog-api-key': this.apiKeys.gemini! },
       body: JSON.stringify({
@@ -347,7 +371,7 @@ export class AIService {
       ]
     }));
     const system = messages.find(message => message.role === 'system')?.content;
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetchWithProviderTimeout('Anthropic', 'https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -380,7 +404,7 @@ export class AIService {
       messages.find(message => message.role === 'system')?.content,
       ...messages.filter(message => message.role !== 'system').map(message => `${message.role}: ${message.content}`)
     ].filter(Boolean).join('\n\n');
-    const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(this.cloudflareAccountId)}/ai/run/${model}`, {
+    const response = await fetchWithProviderTimeout('Cloudflare Workers AI', `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(this.cloudflareAccountId)}/ai/run/${model}`, {
       method: 'POST',
       headers: { authorization: `Bearer ${this.apiKeys.cloudflare!}`, 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -404,7 +428,7 @@ export class AIService {
   }
 
   private async downloadImage(imageUrl: string): Promise<{ mimeType: string; data: string }> {
-    const response = await fetch(imageUrl);
+    const response = await fetchWithProviderTimeout('Image download', imageUrl);
     if (!response.ok) throw new Error(`Unable to fetch image (HTTP ${response.status})`);
     const mimeType = response.headers.get('content-type')?.split(';')[0].toLowerCase();
     if (!mimeType || !['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mimeType)) {
