@@ -8,8 +8,9 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { DndCurrency } from '@prisma/client';
 import { getAIService } from '../../services/ai';
-import { CURRENCIES, formatCoins, walletCurrencyValue } from '../../services/dnd-currency';
-import { prisma } from '../../services/prisma';
+import { getMainCampaignContext } from '../../services/dnd-campaign';
+import { CURRENCIES, formatCoins } from '../../services/dnd-currency';
+import { getWallet, getWalletCurrencies } from '../../services/dnd-wallet';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
 
@@ -47,30 +48,14 @@ const balanceCommand: Command = {
 
     await interaction.deferReply();
     try {
-      const wallet = await prisma.dndWallet.findFirst({
-        where: {
-          discordUserId: interaction.user.id,
-          campaign: {
-            name: 'Main Campaign',
-            server: { discordId: guild.id }
-          }
-        },
-        select: {
-          copperCp: true,
-          silverSp: true,
-          goldGp: true,
-          electrumEl: true,
-          platinumPc: true,
-          campaign: { select: { server: { select: { aiNarrationEnabled: true } } } }
-        }
-      });
-      const balances = currencies.map(currency => ({
-        currency,
-        amount: wallet ? walletCurrencyValue(wallet, currency) : 0n
-      }));
+      const { server, campaign } = await getMainCampaignContext(guild.id, guild.name);
+      const wallet = await getWallet(campaign.id, interaction.user.id);
+      const balances = wallet
+        ? getWalletCurrencies(wallet, currencies)
+        : currencies.map(currency => ({ currency, amount: 0n }));
       const lines = balances.map(({ currency, amount }) => `**${formatCoins(amount)} ${currency.toLowerCase()}**`);
       const entries = balances.map(({ currency, amount }) => `${formatCoins(amount)} ${CURRENCIES[currency].label}`);
-      const narration = wallet?.campaign.server.aiNarrationEnabled === false
+      const narration = !server.aiNarrationEnabled
         ? 'Your coins are right where you left them.'
         : await narrateVault(entries);
       const embed = new EmbedBuilder()

@@ -2,7 +2,8 @@ import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from '
 import { randomInt } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { getAIService } from '../../services/ai';
-import { createCampaignStoryEntry, getMainCampaign, getRecentStory, interpretCampaignStoryEntry } from '../../services/dnd-context';
+import { getMainCampaign } from '../../services/dnd-campaign';
+import { createCampaignStoryEntry, getRecentStory, interpretCampaignStoryEntry } from '../../services/dnd-context';
 import { combatantId, dexterityModifier, EncounterCombatant, formatCombatant, orderedCombatants, readCombatants, toJson } from '../../services/dnd-encounter';
 import { prisma } from '../../services/prisma';
 import { Command } from '../../types/command';

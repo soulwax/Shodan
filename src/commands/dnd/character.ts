@@ -1,25 +1,13 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { Prisma } from '@prisma/client';
 import { getAIService } from '../../services/ai';
+import { getMainCampaign } from '../../services/dnd-campaign';
 import { prisma } from '../../services/prisma';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const MAX_MEMORY_LENGTH = 1500;
-
-async function getMainCampaign(guildId: string, guildName: string) {
-  const server = await prisma.dndServer.upsert({
-    where: { discordId: guildId },
-    create: { discordId: guildId, name: guildName },
-    update: { name: guildName }
-  });
-  return prisma.dndCampaign.upsert({
-    where: { serverId_name: { serverId: server.id, name: 'Main Campaign' } },
-    create: { serverId: server.id, name: 'Main Campaign', isDefault: true },
-    update: {}
-  });
-}
 
 function printable(value: unknown): string {
   if (value === null || value === undefined || value === '') return '—';

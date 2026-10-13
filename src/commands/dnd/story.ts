@@ -6,10 +6,10 @@ import {
 } from 'discord.js';
 import { DndStoryKind, Prisma } from '@prisma/client';
 import { getAIService } from '../../services/ai';
+import { getMainCampaign } from '../../services/dnd-campaign';
 import {
   createCampaignStoryEntry,
   deleteCampaignStoryEntry,
-  getMainCampaign,
   interpretCampaignStoryEntry,
   updateCampaignStoryEntry
 } from '../../services/dnd-context';

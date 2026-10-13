@@ -1,6 +1,7 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getAIService } from '../../services/ai';
-import { createCampaignStoryEntry, getMainCampaign, getRecentStory } from '../../services/dnd-context';
+import { getMainCampaign } from '../../services/dnd-campaign';
+import { createCampaignStoryEntry, getRecentStory } from '../../services/dnd-context';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
 

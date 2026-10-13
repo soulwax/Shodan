@@ -14,20 +14,6 @@ function labelKind(kind: DndStoryKind): string {
   return kind.charAt(0) + kind.slice(1).toLowerCase();
 }
 
-export async function getMainCampaign(guildId: string, guildName: string) {
-  const server = await prisma.dndServer.upsert({
-    where: { discordId: guildId },
-    create: { discordId: guildId, name: guildName },
-    update: { name: guildName }
-  });
-
-  return prisma.dndCampaign.upsert({
-    where: { serverId_name: { serverId: server.id, name: 'Main Campaign' } },
-    create: { serverId: server.id, name: 'Main Campaign', isDefault: true },
-    update: {}
-  });
-}
-
 export async function interpretCampaignStoryEntry(
   campaignId: string,
   kind: DndStoryKind,

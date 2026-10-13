@@ -2,10 +2,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   coinAmountEntries,
-  parseCoinNotation,
+  parseCoinNotation
+} = require('../dist/services/dnd-currency.js');
+const {
   walletCurrenciesAtLeast,
   walletCurrencyUpdates
-} = require('../dist/services/dnd-currency.js');
+} = require('../dist/services/dnd-wallet-mapping.js');
 
 function asObject(input) {
   return Object.fromEntries(coinAmountEntries(parseCoinNotation(input)).map(([currency, amount]) => [currency, amount]));

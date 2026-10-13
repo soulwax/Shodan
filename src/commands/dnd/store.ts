@@ -8,14 +8,12 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { DndCurrency } from '@prisma/client';
 import { getAIService } from '../../services/ai';
-import { coinAmountEntries, formatCoins, parseCoinNotation, walletCurrencyCreates, walletCurrencyUpdates, walletCurrencyValue } from '../../services/dnd-currency';
-import { prisma } from '../../services/prisma';
+import { getMainCampaignContext } from '../../services/dnd-campaign';
+import { coinAmountEntries, formatCoinEntries, formatCoins, parseCoinNotation } from '../../services/dnd-currency';
+import { depositCoins } from '../../services/dnd-wallet';
+import { walletCurrencyValue } from '../../services/dnd-wallet-mapping';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
-
-function formatEntries(entries: Array<[DndCurrency, bigint]>): string {
-  return entries.map(([currency, amount]) => `${formatCoins(amount)} ${currency.toLowerCase()}`).join(', ');
-}
 
 function fallbackNarration(total: bigint): string {
   if (total <= 10n) return 'The clerk barely pauses before adding the coins to the ledger.';
@@ -31,7 +29,7 @@ async function narrateDeposit(entries: Array<[DndCurrency, bigint]>): Promise<st
         role: 'system',
         content: 'You are the friendly, slightly opinionated keeper of a fantasy adventurers’ bank. Write one short, vivid line reacting to a deposit of coins that may use several denominations. Sound like a Dungeon Master adding flavor at the table: natural, playful, and specific to the size of the handful. Do not repeat amounts, invent fees, change the balance, or use markdown. Keep it under 25 words.'
       },
-      { role: 'user', content: `A player deposited ${formatEntries(entries)}. Give the bankkeeper’s one-line reaction.` }
+      { role: 'user', content: `A player deposited ${formatCoinEntries(entries)}. Give the bankkeeper’s one-line reaction.` }
     ], { temperature: 0.95, max_tokens: 80 });
     return response?.trim().slice(0, 300) || fallbackNarration(total);
   } catch {
@@ -73,51 +71,21 @@ const storeCommand: Command = {
     await interaction.deferReply();
 
     try {
-      const server = await prisma.dndServer.upsert({
-        where: { discordId: guild.id },
-        create: { discordId: guild.id, name: guild.name },
-        update: { name: guild.name }
-      });
-      const campaign = await prisma.dndCampaign.upsert({
-        where: { serverId_name: { serverId: server.id, name: 'Main Campaign' } },
-        create: { serverId: server.id, name: 'Main Campaign', isDefault: true },
-        update: {}
-      });
+      const { server, campaign } = await getMainCampaignContext(guild.id, guild.name);
       const narration = server.aiNarrationEnabled ? await narrateDeposit(entries) : fallbackNarration(entries.reduce((sum, [, value]) => sum + value, 0n));
-      const result = await prisma.$transaction(async transaction => {
-        const wallet = await transaction.dndWallet.upsert({
-          where: {
-            campaignId_discordUserId: {
-              campaignId: campaign.id,
-              discordUserId: interaction.user.id
-            }
-          },
-          create: {
-            campaignId: campaign.id,
-            discordUserId: interaction.user.id,
-            ...walletCurrencyCreates(amounts)
-          },
-          update: walletCurrencyUpdates(amounts, 'increment')
-        });
-        await transaction.dndTransaction.createMany({
-          data: entries.map(([currency, amount]) => ({
-            walletId: wallet.id,
-            discordInteractionId: interaction.id,
-            type: 'DEPOSIT' as const,
-            amount,
-            currency,
-            balanceAfter: walletCurrencyValue(wallet, currency),
-            narration
-          }))
-        });
-        return wallet;
+      const result = await depositCoins({
+        campaignId: campaign.id,
+        discordUserId: interaction.user.id,
+        interactionId: interaction.id,
+        amounts,
+        narration
       });
 
       const balances = entries.map(([currency]) => `**${currency.toLowerCase()} balance:** ${formatCoins(walletCurrencyValue(result, currency))}`).join('\n');
       const embed = new EmbedBuilder()
         .setColor(0xd4af37)
         .setTitle('🪙 Coins safely stowed')
-        .setDescription(`**${formatEntries(entries)} deposited.**\n${narration}\n\n${balances}`)
+        .setDescription(`**${formatCoinEntries(entries)} deposited.**\n${narration}\n\n${balances}`)
         .setFooter({ text: `Your balance is kept separately in ${guild.name}.` });
       await interaction.editReply({ embeds: [embed], allowedMentions: { parse: [] } });
     } catch (error) {
