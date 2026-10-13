@@ -4,67 +4,90 @@
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-// File: src/commands/utility/help.ts
-
-
 
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { ExtendedClient } from '../../core/client';
 import { Command } from '../../types/command';
 
+const descriptions: Record<string, string> = {
+  avatar: 'Show a member’s avatar.',
+  balance: 'Check your five server campaign coin balances.',
+  banned: 'List members banned from this server.',
+  character: 'Use `/character init`, `read`, `ask`, `remember`, `change`, or `hp` for your saved sheet.',
+  coinflip: 'Flip a coin.',
+  compliment: 'Send yourself or someone else an AI generated compliment.',
+  describe: 'Get a short narration for an attached image.',
+  dice: 'Roll several random values within a range.',
+  divine: 'Draw a tarot card and get a reading.',
+  echo: 'Repeat a message.',
+  encounter: 'Use `start`, `add`, `next`, `status`, `damage`, `heal`, `remove`, `twist`, or `end` to run a fight.',
+  example: 'Show a sample embed.',
+  fortune: 'Get a lighthearted fortune.',
+  help: 'Show this command guide.',
+  history: 'Revisit recent tarot readings.',
+  join: 'Join your current voice channel (no music playback).',
+  members: 'List members of this server.',
+  npc: 'Generate a campaign aware NPC; `save:true` adds it to the journal.',
+  ping: 'Check bot response time.',
+  purge: 'Delete up to 100 recent messages.',
+  'purge-char': 'Erase your saved character and notes for this server.',
+  quest: 'Generate a campaign aware quest; `save:true` adds it to the journal.',
+  roll: 'Roll dice using notation such as `2d6`.',
+  roast: 'Ask for a playful roast.',
+  ship: 'Get a playful compatibility read for two names.',
+  story: 'Use `add`, `recent`, `search`, or `recap` to manage the shared campaign journal.',
+  store: 'Deposit coins, for example `coins:20sp 10gp 5e`.',
+  withdraw: 'Withdraw coins using the same notation as `/store`.'
+};
+
+const groups: Array<{ name: string; commands: string[] }> = [
+  { name: '🧭 D&D · Character & journal', commands: ['character', 'purge-char', 'story'] },
+  { name: '⚔️ D&D · Encounters & bank', commands: ['encounter', 'quest', 'npc', 'store', 'withdraw', 'balance'] },
+  { name: '🔮 Tarot', commands: ['divine', 'history'] },
+  { name: '🎲 Fun & AI', commands: ['roll', 'dice', 'coinflip', 'describe', 'roast', 'compliment', 'fortune', 'ship'] },
+  { name: '🛠️ Server utilities', commands: ['avatar', 'echo', 'ping', 'join', 'help', 'example'] },
+  { name: '🛡️ Moderation', commands: ['purge', 'banned', 'members'] }
+];
+
 const helpCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('help')
-    .setDescription('See what I can do.'),
-
+    .setDescription('Browse Shodan’s commands and D&D tools.'),
   category: 'utility',
   cooldown: 5,
 
   async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
+    const available = new Set(client.commands.keys());
     const embed = new EmbedBuilder()
-      .setTitle('Need a hand?')
-      .setDescription('Here are the commands available to you:')
-      .setColor('#15999f')
+      .setTitle('Shodan · Command guide')
+      .setDescription('Pick a slash command to see its options. D&D campaign tools are scoped to this server.')
+      .setColor(0x15999f)
       .setAuthor({
         name: client.user?.tag || 'Shodan Bot',
-        iconURL: client.user?.displayAvatarURL({ size: 2048 }),
+        iconURL: client.user?.displayAvatarURL({ size: 256 })
       });
 
-    // Group commands by category
-    const commandsByCategory = new Map<string, Command[]>();
+    const listed = new Set<string>();
+    for (const group of groups) {
+      const lines = group.commands
+        .filter(name => available.has(name))
+        .map(name => {
+          listed.add(name);
+          return `**/${name}** — ${descriptions[name] || 'Open this command for options.'}`;
+        });
+      if (lines.length) embed.addFields({ name: group.name, value: lines.join('\n') });
+    }
 
-    // Add all commands to their categories
-    client.commands.forEach(command => {
-      const category = command.category || 'Miscellaneous';
-      if (!commandsByCategory.has(category)) {
-        commandsByCategory.set(category, []);
-      }
-      commandsByCategory.get(category)!.push(command);
-    });
-
-    // Add fields for each category
-    for (const [category, commands] of commandsByCategory) {
-      const commandList = commands
-        .map(cmd => `\`/${cmd.data.name}\` - ${cmd.data.description}`)
-        .join('\n');
-
+    const unlisted = [...available].filter(name => !listed.has(name)).sort();
+    if (unlisted.length) {
       embed.addFields({
-        name: `${category.charAt(0).toUpperCase() + category.slice(1)}`,
-        value: commandList,
+        name: 'More commands',
+        value: unlisted.map(name => `**/${name}** — ${descriptions[name] || 'Open this command for options.'}`).join('\n').slice(0, 1024)
       });
     }
 
-    await interaction.reply({ embeds: [embed] });
-  },
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+  }
 };
 
 export default helpCommand;

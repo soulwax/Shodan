@@ -78,7 +78,7 @@ export async function registerCommands(client: ExtendedClient): Promise<void> {
 
       const commandFiles = fs
         .readdirSync(folderPath)
-        .filter((file) => file.endsWith('.ts') || file.endsWith('.js'))
+        .filter((file) => (file.endsWith('.ts') || file.endsWith('.js')) && !file.endsWith('.d.ts'))
 
       for (const file of commandFiles) {
         try {

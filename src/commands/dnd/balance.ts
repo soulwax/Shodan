@@ -6,36 +6,35 @@
 // (at your option) any later version.
 
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { DndCurrency } from '@prisma/client';
 import { getAIService } from '../../services/ai';
+import { CURRENCIES, formatCoins, walletCurrencyValue } from '../../services/dnd-currency';
 import { prisma } from '../../services/prisma';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
 
-function formatGold(amount: bigint): string {
-  return new Intl.NumberFormat('en-US').format(amount);
-}
+const currencies = [DndCurrency.CP, DndCurrency.SP, DndCurrency.GP, DndCurrency.EL, DndCurrency.PC];
 
-async function narrateVault(amount: bigint): Promise<string> {
-  const amountLabel = formatGold(amount);
+async function narrateVault(entries: string[]): Promise<string> {
   try {
     const response = await getAIService().createChatCompletion([
       {
         role: 'system',
-        content: 'You are a fantasy bankkeeper giving a quick, warm update about an adventurer’s vault. In one short line, describe the feel of the vault based on its balance. Be playful and grounded, not grandiose. Do not repeat the number, suggest the money has changed, or use markdown. Under 20 words.'
+        content: 'You are a fantasy bankkeeper giving a quick, warm update about an adventurer’s vault. In one short line, describe its feel based on the mix of coins. Be playful and grounded, not grandiose. Do not repeat the amounts or suggest the money has changed. No markdown. Under 20 words.'
       },
-      { role: 'user', content: `The vault contains ${amountLabel} gp. Give the bankkeeper’s one-line observation.` }
+      { role: 'user', content: `The vault contains ${entries.join(', ')}. Give the bankkeeper’s one-line observation.` }
     ], { temperature: 0.8, max_tokens: 60 });
     return response?.trim().slice(0, 250) || 'The ledger is up to date.';
   } catch {
     logger.warn('[D&D] AI balance narration unavailable; using the standard line.');
-    return amount === 0n ? 'An empty vault is just a future story.' : 'Every coin is accounted for.';
+    return 'Every coin is accounted for.';
   }
 }
 
 const balanceCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('balance')
-    .setDescription('Check the gold in your adventurer bank.'),
+    .setDescription('Check the coins in your adventurer bank.'),
   category: 'dnd',
   cooldown: 3,
 
@@ -57,24 +56,31 @@ const balanceCommand: Command = {
           }
         },
         select: {
+          copperCp: true,
+          silverSp: true,
           goldGp: true,
-          campaign: {
-            select: { server: { select: { aiNarrationEnabled: true } } }
-          }
+          electrumEl: true,
+          platinumPc: true,
+          campaign: { select: { server: { select: { aiNarrationEnabled: true } } } }
         }
       });
-      const goldGp = wallet?.goldGp ?? 0n;
+      const balances = currencies.map(currency => ({
+        currency,
+        amount: wallet ? walletCurrencyValue(wallet, currency) : 0n
+      }));
+      const lines = balances.map(({ currency, amount }) => `**${formatCoins(amount)} ${currency.toLowerCase()}**`);
+      const entries = balances.map(({ currency, amount }) => `${formatCoins(amount)} ${CURRENCIES[currency].label}`);
       const narration = wallet?.campaign.server.aiNarrationEnabled === false
-        ? 'Your gold is right where you left it.'
-        : await narrateVault(goldGp);
+        ? 'Your coins are right where you left them.'
+        : await narrateVault(entries);
       const embed = new EmbedBuilder()
         .setColor(0xd4af37)
         .setTitle('🏦 Your adventurer vault')
-        .setDescription(`**${formatGold(goldGp)} gp**\n${narration}`)
+        .setDescription(`${lines.join('\n')}\n\n${narration}`)
         .setFooter({ text: `This balance belongs to you in ${guild.name}.` });
       await interaction.editReply({ embeds: [embed], allowedMentions: { parse: [] } });
     } catch (error) {
-      logger.error('[D&D] Failed to read gold balance:', error);
+      logger.error('[D&D] Failed to read coin balance:', error);
       await interaction.editReply({ content: 'I couldn’t read your balance just now. Please try again.' });
     }
   }

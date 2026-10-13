@@ -68,8 +68,16 @@ enum DndTransactionType {
   WITHDRAWAL
 }
 
+enum DndCurrency {
+  CP
+  SP
+  GP
+  EL
+  PC
+}
+
 // D&D data is partitioned by Discord server. Each server has its own wallets,
-// so a member's gold in one server is never visible to another server.
+// so a member's coins in one server are never visible to another server.
 model DndServer {
   id                 String        @id @default(uuid())
   discordId          String        @unique
@@ -90,6 +98,7 @@ model DndCampaign {
   wallets      DndWallet[]
   characters   DndCharacter[]
   storyTidbits DndStoryTidbit[]
+  encounters   DndEncounter[]
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
@@ -123,11 +132,33 @@ model DndStoryTidbit {
   @@index([campaignId, createdAt])
 }
 
+model DndEncounter {
+  id                    String      @id @default(uuid())
+  campaignId            String
+  title                 String
+  scene                 String?     @db.Text
+  round                 Int         @default(1)
+  currentTurnIndex      Int         @default(-1)
+  turnOrder             Json        @default("[]")
+  revision              Int         @default(0)
+  isActive              Boolean     @default(true)
+  createdByDiscordUserId String
+  campaign              DndCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt             DateTime    @default(now())
+  endedAt               DateTime?
+
+  @@index([campaignId, isActive, createdAt])
+}
+
 model DndWallet {
   id            String           @id @default(uuid())
   campaignId    String
   discordUserId String
+  copperCp      BigInt           @default(0)
+  silverSp      BigInt           @default(0)
   goldGp        BigInt           @default(0)
+  electrumEl    BigInt           @default(0)
+  platinumPc    BigInt           @default(0)
   campaign      DndCampaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   transactions  DndTransaction[]
   createdAt     DateTime         @default(now())
@@ -140,13 +171,15 @@ model DndWallet {
 model DndTransaction {
   id                   String             @id @default(uuid())
   walletId             String
-  discordInteractionId String             @unique
+  discordInteractionId String
   type                 DndTransactionType
-  amountGp             BigInt
-  balanceAfterGp       BigInt
+  amount                BigInt
+  balanceAfter          BigInt
+  currency              DndCurrency        @default(GP)
   narration            String?            @db.Text
   wallet               DndWallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
   createdAt            DateTime           @default(now())
 
   @@index([walletId, createdAt])
+  @@unique([discordInteractionId, currency])
 }
