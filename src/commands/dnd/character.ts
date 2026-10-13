@@ -49,6 +49,13 @@ const characterCommand: Command = {
       .setDescription('Add a note to your character’s memory.')
       .addStringOption(option => option.setName('note').setDescription('A fact, goal, promise, or detail to remember.').setRequired(true).setMaxLength(MAX_MEMORY_LENGTH)))
     .addSubcommand(subcommand => subcommand
+      .setName('hp')
+      .setDescription('Track damage, healing, or your current hit points.')
+      .addStringOption(option => option.setName('action').setDescription('What happened?').setRequired(true).addChoices(
+        { name: 'Take damage', value: 'damage' }, { name: 'Heal', value: 'heal' }, { name: 'Set current HP', value: 'set' }
+      ))
+      .addIntegerOption(option => option.setName('amount').setDescription('Damage, healing, or new current HP.').setRequired(true).setMinValue(0).setMaxValue(10000)))
+    .addSubcommand(subcommand => subcommand
       .setName('change')
       .setDescription('Change a field on your character sheet.')
       .addStringOption(option => option.setName('field').setDescription('Which field to change?').setRequired(true)
@@ -148,6 +155,38 @@ const characterCommand: Command = {
         const memories = [character.memories, `• ${note}`].filter(Boolean).join('\n').slice(-8000);
         await prisma.dndCharacter.update({ where: { id: character.id }, data: { memories } });
         await interaction.editReply('I’ll keep that with your character notes.');
+        return;
+      }
+      if (action === 'hp') {
+        const fields = character.sheetData && typeof character.sheetData === 'object' && !Array.isArray(character.sheetData)
+          ? { ...character.sheetData as Record<string, unknown> }
+          : {};
+        const currentHp = Number(fields.hp_current);
+        const maximumHp = Number(fields.hp_max);
+        if (!Number.isInteger(currentHp) || currentHp < 0 || !Number.isInteger(maximumHp) || maximumHp < 1) {
+          await interaction.editReply('Your sheet needs numeric current and maximum HP first. Set them with `/character change`.');
+          return;
+        }
+        const hpAction = interaction.options.getString('action', true);
+        const amount = interaction.options.getInteger('amount', true);
+        if (hpAction !== 'set' && amount === 0) {
+          await interaction.editReply('Enter at least 1 HP for damage or healing.');
+          return;
+        }
+        const nextHp = hpAction === 'damage'
+          ? Math.max(0, currentHp - amount)
+          : hpAction === 'heal'
+            ? Math.min(maximumHp, currentHp + amount)
+            : amount;
+        if (nextHp > maximumHp) {
+          await interaction.editReply(`Your current HP can’t exceed your maximum of ${maximumHp}.`);
+          return;
+        }
+        fields.hp_current = nextHp;
+        await prisma.dndCharacter.update({ where: { id: character.id }, data: { sheetData: fields as Prisma.InputJsonValue } });
+        const changeText = hpAction === 'damage' ? `${Math.min(amount, currentHp)} damage taken`
+          : hpAction === 'heal' ? `${nextHp - currentHp} HP restored` : 'Current HP updated';
+        await interaction.editReply(`${changeText}. **${nextHp} / ${maximumHp} HP**`);
         return;
       }
       if (action === 'change') {

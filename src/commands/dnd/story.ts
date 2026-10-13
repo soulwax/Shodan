@@ -13,7 +13,11 @@ const storyCommand: Command = {
       .addStringOption(option => option.setName('tidbit').setDescription('A rumor, event, clue, NPC detail, or other campaign note.').setRequired(true).setMaxLength(1000)))
     .addSubcommand(subcommand => subcommand
       .setName('recent')
-      .setDescription('Read the latest story tidbits saved for this server.')),
+      .setDescription('Read the latest story tidbits saved for this server.'))
+    .addSubcommand(subcommand => subcommand
+      .setName('search')
+      .setDescription('Find story tidbits containing a word or phrase.')
+      .addStringOption(option => option.setName('query').setDescription('A name, place, clue, or phrase to look for.').setRequired(true).setMinLength(2).setMaxLength(100))),
   category: 'dnd',
   cooldown: 3,
 
@@ -44,20 +48,22 @@ const storyCommand: Command = {
         await interaction.editReply('Added to the campaign journal. The small details have a way of becoming important.');
         return;
       }
+      const searching = interaction.options.getSubcommand() === 'search';
+      const query = searching ? interaction.options.getString('query', true).trim() : undefined;
       const tidbits = await prisma.dndStoryTidbit.findMany({
-        where: { campaignId: campaign.id },
+        where: { campaignId: campaign.id, ...(query ? { content: { contains: query, mode: 'insensitive' } } : {}) },
         orderBy: { createdAt: 'desc' },
         take: 10
       });
       if (!tidbits.length) {
-        await interaction.editReply('The campaign journal is blank so far. Add the first detail with `/story add`.');
+        await interaction.editReply(searching ? `No story tidbits matched “${query}”.` : 'The campaign journal is blank so far. Add the first detail with `/story add`.');
         return;
       }
       const embed = new EmbedBuilder()
         .setColor(0x586b4d)
-        .setTitle(`${interaction.guild.name} · Campaign journal`)
+        .setTitle(searching ? `Journal search: ${query}` : `${interaction.guild.name} · Campaign journal`)
         .setDescription(tidbits.map(entry => `• ${entry.content.slice(0, 1000)}\n  — <t:${Math.floor(entry.createdAt.getTime() / 1000)}:R>`).join('\n\n').slice(0, 4000))
-        .setFooter({ text: 'Showing the 10 most recent tidbits.' });
+        .setFooter({ text: searching ? `Showing up to 10 matches in ${interaction.guild.name}.` : 'Showing the 10 most recent tidbits.' });
       await interaction.editReply({ embeds: [embed], allowedMentions: { parse: [] } });
     } catch (error) {
       logger.error('[D&D] Story command failed:', error);

@@ -28,10 +28,10 @@ Nothing is being logged, so you can be sure that your privacy is respected. This
 
 ### 🎲 D&D
 
-- `/store` and `/balance` - Keep a separate adventurer bank in each server.
-- `/character init`, `/character read`, `/character remember`, and `/character change` - Import a searchable PDF sheet with AI, view it, save private character notes, and update common fields.
+- `/store`, `/withdraw`, and `/balance` - Deposit, withdraw, and check gold in your server’s adventurer bank.
+- `/character init`, `/character read`, `/character remember`, `/character change`, and `/character hp` - Import a searchable PDF sheet with AI, view it, save private character notes, edit fields, and track damage or healing.
 - `/purge-char` - Erase your own saved character and notes from the current server.
-- `/story add` and `/story recent` - Add campaign lore tidbits and read the latest journal entries.
+- `/story add`, `/story recent`, and `/story search` - Add campaign lore tidbits, read recent journal entries, and search saved notes.
 
 Character sheets and campaign journals are stored under that server’s Main Campaign. Character data is keyed by both campaign and Discord user; story entries are shared within the server.
 
