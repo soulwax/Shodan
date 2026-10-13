@@ -19,6 +19,8 @@
 
 import { ClientEvents } from "discord.js";
 
+// Event names are resolved dynamically when files are loaded at startup.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface Event<K extends keyof ClientEvents = any> {
   name: K;
   once: boolean;

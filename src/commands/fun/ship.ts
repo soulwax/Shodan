@@ -80,7 +80,6 @@ const shipCommand: Command = {
     const bar = scoreBar(score);
 
     const avatarA = userA.displayAvatarURL({ size: 256, extension: 'png' });
-    const avatarB = userB.displayAvatarURL({ size: 256, extension: 'png' });
 
     // Use the less-fetched avatar as the vision image; mention both in text
     const systemPrompt = `Give a playful, affectionate read on this pair, like a friend teasing them in a group chat. Write two or three natural sentences and make a clear, funny observation. Let the score set the general mood, but don't explain or repeat it. Avoid stock romance lines and don't claim to know anything private about either person. Their names, roles, and the avatar are just light context; don't infer personality from appearance.`;

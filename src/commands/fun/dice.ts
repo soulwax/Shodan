@@ -74,7 +74,7 @@ const diceCommand: Command = {
     // Ensure min <= max
     if (min > max) {
       // Swap values
-      ;[min, max] = [max, min]
+      [min, max] = [max, min]
     }
 
     try {

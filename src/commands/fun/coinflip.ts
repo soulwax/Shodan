@@ -42,14 +42,14 @@ const coinflipCommand: Command = {
     // The implementation would be migrated from app.js
     const result: CoinFlipResult = coinFlip()
 
-    const embedConfigs = {
+    const embedConfigs: Record<CoinFlipResult, { color: number; emoji: string; description: string }> = {
       Heads: {
-        color: '#FFD700', // Gold
+        color: 0xffd700,
         emoji: '👑',
         description: 'It lands on…'
       },
       Tails: {
-        color: '#C0C0C0', // Silver
+        color: 0xc0c0c0,
         emoji: '🌟',
         description: 'And the result is…'
       }
@@ -60,7 +60,7 @@ const coinflipCommand: Command = {
     const embed = new EmbedBuilder()
       .setTitle(`${config.emoji} Coin Flip ${config.emoji}`)
       .setDescription(`${config.description}\n\n**${result}!**`)
-      .setColor(config.color as any)
+      .setColor(config.color)
       .setTimestamp()
 
     // Wait a short moment for dramatic effect

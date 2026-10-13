@@ -8,7 +8,7 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { DndCurrency } from '@prisma/client';
 import { getAIService } from '../../services/ai';
-import { CURRENCIES, coinAmountEntries, formatCoins, parseCoinNotation, walletCurrencyCreates, walletCurrencyUpdates, walletCurrencyValue } from '../../services/dnd-currency';
+import { coinAmountEntries, formatCoins, parseCoinNotation, walletCurrencyCreates, walletCurrencyUpdates, walletCurrencyValue } from '../../services/dnd-currency';
 import { prisma } from '../../services/prisma';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';

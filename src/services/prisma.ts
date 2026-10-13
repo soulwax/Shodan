@@ -39,7 +39,7 @@ const adapter = new PrismaPg({ connectionString })
 // Prisma v7: Auto-connects on first query, $connect() is optional
 // Using PostgreSQL adapter for direct database connection
 const prisma = new PrismaClient({
-  adapter: adapter as any, // Type assertion: PrismaPg is compatible but types need alignment
+  adapter: adapter as unknown as Prisma.PrismaClientOptions['adapter'],
   log: [
     {
       emit: 'event',

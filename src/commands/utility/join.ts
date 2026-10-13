@@ -73,7 +73,7 @@ const joinCommand: Command = {
         const connection = joinVoiceChannel({
           channelId: voiceChannel.id,
           guildId: interaction.guild!.id,
-          adapterCreator: interaction.guild!.voiceAdapterCreator as any
+          adapterCreator: interaction.guild!.voiceAdapterCreator
         })
 
         connection.on(VoiceConnectionStatus.Ready, () => {

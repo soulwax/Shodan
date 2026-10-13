@@ -231,6 +231,18 @@ const characterCommand: Command = {
         const fields = character.sheetData && typeof character.sheetData === 'object' && !Array.isArray(character.sheetData)
           ? { ...character.sheetData as Record<string, unknown> }
           : {};
+        if (field === 'hp_max' && Number(parsedValue) < 1) {
+          await interaction.editReply('Maximum HP must be at least 1.');
+          return;
+        }
+        if (field === 'hp_max' && Number.isInteger(Number(fields.hp_current)) && Number(fields.hp_current) > Number(parsedValue)) {
+          await interaction.editReply(`Maximum HP can’t be lower than your current ${Number(fields.hp_current)} HP.`);
+          return;
+        }
+        if (field === 'hp_current' && Number.isInteger(Number(fields.hp_max)) && Number(fields.hp_max) >= 1 && Number(parsedValue) > Number(fields.hp_max)) {
+          await interaction.editReply(`Current HP can’t exceed your maximum of ${Number(fields.hp_max)}.`);
+          return;
+        }
         fields[field] = parsedValue;
         await prisma.dndCharacter.update({
           where: { id: character.id },

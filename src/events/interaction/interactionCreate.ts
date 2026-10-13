@@ -59,9 +59,13 @@ const interactionCreateEvent: Event = {
         return;
       }
 
-      timestamps.set(userId, now + cooldownMs);
+      const nextExpiry = now + cooldownMs;
+      timestamps.set(userId, nextExpiry);
       // Clean up the entry once the cooldown expires to avoid memory growth
-      setTimeout(() => timestamps.delete(userId), cooldownMs);
+      setTimeout(() => {
+        // An older timer must not erase a newer cooldown for the same user.
+        if (timestamps.get(userId) === nextExpiry) timestamps.delete(userId);
+      }, cooldownMs);
     }
 
     try {
