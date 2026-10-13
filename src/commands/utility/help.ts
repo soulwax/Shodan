@@ -24,7 +24,6 @@ const descriptions: Record<string, string> = {
   example: 'Show a sample embed.',
   fortune: 'Get a lighthearted fortune.',
   help: 'Show this command guide.',
-  history: 'Revisit recent tarot readings.',
   join: 'Join your current voice channel (no music playback).',
   members: 'List members of this server.',
   npc: 'Generate a campaign aware NPC; `save:true` adds it to the journal.',
@@ -43,7 +42,7 @@ const descriptions: Record<string, string> = {
 const groups: Array<{ name: string; commands: string[] }> = [
   { name: '🧭 D&D · Character & journal', commands: ['character', 'purge-char', 'story'] },
   { name: '⚔️ D&D · Encounters & bank', commands: ['encounter', 'quest', 'npc', 'store', 'withdraw', 'balance'] },
-  { name: '🔮 Tarot', commands: ['divine', 'history'] },
+  { name: '🔮 Tarot', commands: ['divine'] },
   { name: '🎲 Fun & AI', commands: ['roll', 'dice', 'coinflip', 'describe', 'roast', 'compliment', 'fortune', 'ship'] },
   { name: '🛠️ Server utilities', commands: ['avatar', 'echo', 'ping', 'join', 'help', 'example'] },
   { name: '🛡️ Moderation', commands: ['purge', 'banned', 'members'] }

@@ -86,7 +86,6 @@ const roastCommand: Command = {
             : `fired by ${interaction.user.username}`
         });
 
-      logger.info(`[Roast] ${interaction.user.username} roasted ${targetUser.username}`);
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logger.error('[Roast] Failed to generate roast:', error);

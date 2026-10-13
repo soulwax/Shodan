@@ -10,46 +10,6 @@ datasource db {
   // Connection URL is configured in prisma/config.ts for Prisma v7
 }
 
-// User model to store user data
-model User {
-  id            String         @id @default(uuid())
-  discordId     String         @unique
-  username      String
-  discriminator String?
-  avatar        String?
-  commands      Command[]
-  tarotReadings TarotReading[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-}
-
-// Command model to track command usage
-model Command {
-  id        String   @id @default(uuid())
-  name      String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  guildId   String?
-  arguments Json?
-  createdAt DateTime @default(now())
-}
-
-// Tarot reading model
-model TarotReading {
-  id             String   @id @default(uuid())
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId         String
-  cardName       String
-  isReversed     Boolean
-  question       String?
-  interpretation String   @db.Text
-  createdAt      DateTime @default(now())
-  seed           String?
-
-  @@index([userId])
-  @@index([createdAt])
-}
-
 // Guild settings
 model Guild {
   id               String   @id @default(uuid())

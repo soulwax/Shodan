@@ -24,7 +24,6 @@ import { logger } from '../utils/logger'
 const envSchema = z.object({
   BOT_TOKEN: z.string(),
   CLIENT_ID: z.string(),
-  TRACKING_CHANNEL_ID: z.string(),
   LANGUAGE_CHANNEL_ID: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),

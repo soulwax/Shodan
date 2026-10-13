@@ -27,7 +27,6 @@ import {
 import fs from 'fs'
 import path from 'path'
 import { getAIService } from '../../services/ai'
-import { prisma } from '../../services/prisma'
 import { Card } from '../../types/card' // Import the Card interface
 import { Command } from '../../types/command'
 import { logger } from '../../utils/logger'
@@ -83,7 +82,6 @@ const divineCommand: Command = {
       const question = interaction.options.getString('question')
       const seedParam = interaction.options.getString('seed')
       const maxTokens = 800
-      logger.info(`[Divine] Question: ${question}`)
       logger.info(`[Divine] Seed parameter: ${seedParam}`)
 
       let cardIndex: number,
@@ -186,46 +184,6 @@ ${readingContext}`
         }
       )
       logger.info('[Divine] Received AI interpretation')
-
-      try {
-        // Get or create user in database
-        const user = await prisma.user.upsert({
-          where: {
-            discordId: interaction.user.id
-          },
-          update: {
-            username: interaction.user.username,
-            avatar: interaction.user.avatar || null
-          },
-          create: {
-            discordId: interaction.user.id,
-            username: interaction.user.username,
-            discriminator: interaction.user.discriminator || null,
-            avatar: interaction.user.avatar || null
-          }
-        })
-
-        // Save the tarot reading to database
-        await prisma.tarotReading.create({
-          data: {
-            userId: user.id,
-            cardName: card.name,
-            isReversed: isReversed,
-            question: question || null,
-            interpretation: aiInterpretation || 'No interpretation available',
-            seed: `${cardIndex}-${isReversed ? '1' : '0'}-${temperature}-${
-              isWholesome ? '1' : '0'
-            }`
-          }
-        })
-
-        logger.info(
-          `[Divine] Saved tarot reading to database for user ${interaction.user.username}`
-        )
-      } catch (dbError) {
-        // Log the error but don't interrupt the user experience
-        logger.error('[Divine] Failed to save reading to database:', dbError)
-      }
 
       const embed = new EmbedBuilder()
         .setTitle(`🔮 ${card.name}${isReversed ? ' · Reversed' : ''}`)

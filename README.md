@@ -15,7 +15,7 @@ Shodan is a Discord bot for D&D campaign support, AI assisted prompts, tarot rea
 
 ### AI, tarot, and fun
 
-- `/divine` draws a tarot card and offers a reading; `/history` revisits saved readings.
+- `/divine` draws a tarot card and offers a reading. Tarot readings are delivered in the moment and are not stored against a user.
 - `/describe` gives an attached image a short narration in a chosen style.
 - `/roast`, `/compliment`, `/fortune`, and `/ship` create playful AI responses.
 - `/roll`, `/dice`, and `/coinflip` handle tabletop and casual rolls.
@@ -41,7 +41,6 @@ Copy `.env.example` to `.env` and set the required values:
 ```env
 BOT_TOKEN=your_discord_bot_token
 CLIENT_ID=your_discord_application_id
-TRACKING_CHANNEL_ID=your_tracking_channel_id
 DATABASE_URL=postgresql://user:password@host:5432/database?sslmode=require
 
 # Add one or more AI keys. Providers are tried in this order:
@@ -51,7 +50,7 @@ XAI_API_KEY= # or GROK_API_KEY
 ANTHROPIC_API_KEY=
 ```
 
-The bot requires `BOT_TOKEN`, `CLIENT_ID`, `TRACKING_CHANNEL_ID`, and `DATABASE_URL` to start. The AI keys are optional for non-AI commands. If multiple keys are configured, Shodan tries OpenAI, Gemini, Grok, then Anthropic, moving to the next configured provider when one fails.
+The bot requires `BOT_TOKEN`, `CLIENT_ID`, and `DATABASE_URL` to start. The AI keys are optional for non-AI commands. If multiple keys are configured, Shodan tries OpenAI, Gemini, Grok, then Anthropic, moving to the next configured provider when one fails.
 
 AI features send the content needed for the request to the configured AI provider. Depending on the command, this can include a question, campaign journal notes, character sheet text, or an uploaded image.
 
@@ -88,6 +87,8 @@ Slash commands are registered when the bot starts. For local development, use `p
 ## Data and campaign scope
 
 D&D records are separated by Discord server and use that server's Main Campaign. Character sheets and memories belong to an individual Discord user; the story journal and encounter history are shared with the campaign. Journal entries keep their source text and a stored AI interpretation. After note changes, run `/story big-picture` to refresh the shared overview; quest, NPC, and encounter prompts reuse it until the next journal change. Wallet balances are per user and campaign, and deposits and withdrawals are recorded in the database ledger.
+
+Outside D&D campaign features, Shodan does not save user profiles, tarot readings, or command history. Per-command cooldowns use Discord user IDs in process memory only until the cooldown expires.
 
 Keep `.env` private and never commit API keys or bot credentials.
 

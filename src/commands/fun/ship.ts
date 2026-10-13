@@ -108,7 +108,6 @@ The playful compatibility score is ${score}/100. ${nameA}'s avatar is attached, 
         .setThumbnail(avatarA)
         .setFooter({ text: `A little matchmaking, courtesy of ${interaction.user.username}` });
 
-      logger.info(`[Ship] ${interaction.user.username} shipped ${nameA} with ${nameB} — ${score}/100`);
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logger.error('[Ship] Failed to generate ship result:', error);

@@ -71,7 +71,6 @@ const fortuneCommand: Command = {
             : `delivered by ${interaction.user.username}`
         });
 
-      logger.info(`[Fortune] Generated fortune for ${targetUser.username}`);
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logger.error('[Fortune] Failed to generate fortune:', error);

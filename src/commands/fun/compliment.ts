@@ -81,7 +81,6 @@ const complimentCommand: Command = {
             : `from ${interaction.user.username}`
         });
 
-      logger.info(`[Compliment] ${interaction.user.username} complimented ${targetUser.username}`);
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logger.error('[Compliment] Failed to generate compliment:', error);
