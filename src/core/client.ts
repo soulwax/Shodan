@@ -19,9 +19,9 @@
 
 import { Client, Collection, GatewayIntentBits } from 'discord.js';
 import { ExtendedClient as BaseClient } from '../types/client';
-import { Command } from '../types/command';
+import { BotCommand } from '../types/command';
 export interface ExtendedClient extends BaseClient {
-  commands: Collection<string, Command>;
+  commands: Collection<string, BotCommand>;
 }
 
 export function setupDiscordClient() {

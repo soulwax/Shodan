@@ -16,11 +16,11 @@
 // File: src/core/commands.ts
 
 
-import { REST, Routes, SlashCommandBuilder } from 'discord.js'
+import { REST, Routes } from 'discord.js'
 import fs from 'fs'
 import path from 'path'
 import { ExtendedClient } from '../types/client'
-import { Command } from '../types/command'
+import { BotCommand } from '../types/command'
 import { logger } from '../utils/logger'
 
 /**
@@ -29,7 +29,7 @@ import { logger } from '../utils/logger'
 export async function registerCommands(client: ExtendedClient): Promise<void> {
   logger.info('Registering commands...')
 
-  const commands: Command[] = []
+  const commands: BotCommand[] = []
   const commandsDir = path.join(__dirname, '../commands')
 
   // Process both JavaScript files in the root commands directory
@@ -125,9 +125,7 @@ export async function registerCommands(client: ExtendedClient): Promise<void> {
         // Convert command data to JSON before sending to Discord API
         const commandsJson = commands.map((cmd) => {
           // Check if data is SlashCommandBuilder instance
-          return cmd.data instanceof SlashCommandBuilder
-            ? cmd.data.toJSON()
-            : cmd.data
+          return 'toJSON' in cmd.data ? cmd.data.toJSON() : cmd.data
         })
 
         await rest.put(

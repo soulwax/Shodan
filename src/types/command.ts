@@ -18,6 +18,8 @@
 
 import {
   ChatInputCommandInteraction,
+  ContextMenuCommandBuilder,
+  MessageContextMenuCommandInteraction,
   RESTPostAPIChatInputApplicationCommandsJSONBody,
   SlashCommandBuilder,
   SlashCommandOptionsOnlyBuilder,
@@ -38,3 +40,15 @@ export interface Command {
   category?: string
   cooldown?: number
 }
+
+export interface MessageContextCommand {
+  data: ContextMenuCommandBuilder
+  execute: (
+    interaction: MessageContextMenuCommandInteraction,
+    client: ExtendedClient
+  ) => Promise<void>
+  category?: string
+  cooldown?: number
+}
+
+export type BotCommand = Command | MessageContextCommand

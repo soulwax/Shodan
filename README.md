@@ -16,7 +16,7 @@ Shodan is a Discord bot for D&D campaign support, AI assisted prompts, tarot rea
 ### AI, tarot, and fun
 
 - `/divine` draws a tarot card and offers a reading. Tarot readings are delivered in the moment and are not stored against a user.
-- `/describe` gives an attached image a short narration in a chosen style.
+- `/describe` gives an uploaded image a short narration in a chosen style. To use an image already posted in chat, right-click the post and choose **Apps → Describe image**.
 - `/roast`, `/compliment`, `/fortune`, and `/ship` create playful AI responses.
 - `/roll`, `/dice`, and `/coinflip` handle tabletop and casual rolls.
 

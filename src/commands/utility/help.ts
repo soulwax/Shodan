@@ -16,7 +16,7 @@ const descriptions: Record<string, string> = {
   character: 'Use `/character init`, `read`, `ask`, `remember`, `change`, or `hp` for your saved sheet.',
   coinflip: 'Flip a coin.',
   compliment: 'Send yourself or someone else an AI generated compliment.',
-  describe: 'Get a short narration for an attached image.',
+  describe: 'Narrate an upload with `/describe`, or right-click an image post and choose Apps → Describe image.',
   dice: 'Roll several random values within a range.',
   divine: 'Draw a tarot card and get a reading.',
   echo: 'Repeat a message.',

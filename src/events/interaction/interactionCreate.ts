@@ -19,6 +19,7 @@
 
 import { Collection, Events, Interaction } from 'discord.js';
 import { ExtendedClient } from '../../types/client';
+import { Command, MessageContextCommand } from '../../types/command';
 import { Event } from '../../types/event';
 import { logger } from '../../utils/logger';
 
@@ -29,7 +30,7 @@ const interactionCreateEvent: Event = {
   name: Events.InteractionCreate,
   once: false,
   async execute(interaction: Interaction & { client: ExtendedClient }) {
-    if (!interaction.isChatInputCommand()) return;
+    if (!interaction.isChatInputCommand() && !interaction.isMessageContextMenuCommand()) return;
 
     const command = interaction.client.commands.get(interaction.commandName);
 
@@ -64,7 +65,11 @@ const interactionCreateEvent: Event = {
     }
 
     try {
-      await command.execute(interaction, interaction.client);
+      if (interaction.isChatInputCommand()) {
+        await (command as Command).execute(interaction, interaction.client);
+      } else {
+        await (command as MessageContextCommand).execute(interaction, interaction.client);
+      }
     } catch (error) {
       logger.error(`Error executing command ${interaction.commandName}:`, error);
 

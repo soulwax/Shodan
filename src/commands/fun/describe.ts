@@ -17,10 +17,34 @@ const styles = {
   cozy: 'A friend describing the scene over a warm drink: relaxed, specific, and kind.'
 } as const;
 
+export async function narrateImage(imageUrl: string, style: keyof typeof styles | null): Promise<string> {
+  const voice = style ? styles[style] : 'A quick-witted friend noticing the details everyone else missed.';
+  const systemPrompt = `You are a funny, perceptive person narrating an image for a friend. ${voice}
+
+Write 2–4 natural sentences. Point out concrete things that are actually visible, then add a playful observation or tiny story. Keep it light and conversational, like a message someone would enjoy getting in a group chat. No intro, headings, lists, hashtags, or forced catchphrase. Don't identify people, guess personal traits or emotions, or claim anything about the scene that the image doesn't show.`;
+  const textPrompt = 'Give this image a short, entertaining narration. Stick to what you can actually see.';
+  const narration = await getAIService().createVisionCompletion(
+    systemPrompt,
+    textPrompt,
+    imageUrl,
+    { temperature: 0.95, max_tokens: 220 }
+  );
+  if (!narration?.trim()) throw new Error('Empty AI response');
+  return narration.trim();
+}
+
+export function narrationEmbed(narration: string, imageUrl: string): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setDescription(narration)
+    .setImage(imageUrl)
+    .setFooter({ text: 'A little narration for the group.' });
+}
+
 const describeCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('describe')
-    .setDescription('Give an image a little narration, in whatever mood you like.')
+    .setDescription('Narrate an uploaded image, or use the message Apps menu on a post.')
     .addAttachmentOption(option =>
       option.setName('image').setDescription('The image to narrate').setRequired(true)
     )
@@ -50,28 +74,9 @@ const describeCommand: Command = {
       return;
     }
     const style = interaction.options.getString('style') as keyof typeof styles | null;
-    const voice = style ? styles[style] : 'A quick-witted friend noticing the details everyone else missed.';
-
-    const systemPrompt = `You are a funny, perceptive person narrating an image for a friend. ${voice}
-
-Write 2–4 natural sentences. Point out concrete things that are actually visible, then add a playful observation or tiny story. Keep it light and conversational, like a message someone would enjoy getting in a group chat. No intro, headings, lists, hashtags, or forced catchphrase. Don't identify people, guess personal traits or emotions, or claim anything about the scene that the image doesn't show.`;
-    const textPrompt = 'Give this image a short, entertaining narration. Stick to what you can actually see.';
-
     try {
-      const narration = await getAIService().createVisionCompletion(
-        systemPrompt,
-        textPrompt,
-        image.url,
-        { temperature: 0.95, max_tokens: 220 }
-      );
-      if (!narration?.trim()) throw new Error('Empty AI response');
-
-      const embed = new EmbedBuilder()
-        .setColor(0x5865f2)
-        .setDescription(narration.trim())
-        .setImage(image.url)
-        .setFooter({ text: `A little narration, courtesy of ${interaction.user.username}` });
-      await interaction.editReply({ embeds: [embed] });
+      const narration = await narrateImage(image.url, style);
+      await interaction.editReply({ embeds: [narrationEmbed(narration, image.url)] });
     } catch (error) {
       logger.error('[Describe] Failed to narrate image:', error);
       await interaction.editReply({ content: 'I couldn’t get a good look at that just now. Try again in a little bit.' });
