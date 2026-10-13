@@ -38,9 +38,8 @@ export default defineConfig({
     path: path.join(process.cwd(), 'prisma', 'migrations'),
   },
   datasource: {
-    url: env('DATABASE_URL') || env('POSTGRES_PRISMA_URL'),
-    // Optional: direct connection URL (bypasses connection pooling)
-    // directUrl: env('DATABASE_URL_UNPOOLED'),
+    // Migrations need a direct database connection; runtime uses DATABASE_URL.
+    url: env('DATABASE_URL_UNPOOLED') || env('DATABASE_URL') || env('POSTGRES_PRISMA_URL'),
     // Optional: shadow database for safe schema drift detection
     // shadowDatabaseUrl: env('DATABASE_URL_UNPOOLED'),
   },

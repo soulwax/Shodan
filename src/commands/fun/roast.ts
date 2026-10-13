@@ -50,6 +50,11 @@ const roastCommand: Command = {
 
     const displayName = member?.displayName ?? targetUser.username;
     const avatarUrl = targetUser.displayAvatarURL({ size: 256, extension: 'png' });
+    const roles = member?.roles.cache
+      .filter(role => role.id !== interaction.guild?.id)
+      .map(role => role.name)
+      .slice(0, 8)
+      .join(', ') || 'no additional roles';
 
     const topicLine = topic
       ? `focus the roast specifically on: ${topic}`

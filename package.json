@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "ts-node-dev --inspect=7507 src/index.ts",
-    "build": "rimraf dist && tsc",
+    "build": "tsc",
     "prebuild": "rimraf dist",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
@@ -26,8 +26,8 @@
     "tree": "rm -f .project_root_tree.txt && tree -a -I 'node_modules|dist|.git|.expo|.vscode|ios|android|.DS_Store' >> .project_root_tree.txt",
     "annotate": "./scripts/add_file_annotations.sh",
     "clean": "rimraf node_modules dist package-lock.json yarn.lock",
-    "prepare": "prisma generate && npm run build",
-    "go": "pnpm i && pnpm prisma:generate && pnpm prisma:push && pnpm prisma:migrate:deploy && pnpm build && pnpm pm2:restart"
+    "prepare": "prisma generate",
+    "go": "pnpm install --frozen-lockfile && pnpm prisma:migrate:deploy && pnpm build && pnpm pm2:restart"
   },
   "dependencies": {
     "@androz2091/discord-invites-tracker": "^1.2.3",

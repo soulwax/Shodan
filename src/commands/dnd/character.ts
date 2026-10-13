@@ -120,7 +120,7 @@ const characterCommand: Command = {
           create: { campaignId: campaign.id, discordUserId: owner, characterName: name, sheetData: sheetData as Prisma.InputJsonValue },
           update: { characterName: name, sheetData: sheetData as Prisma.InputJsonValue }
         });
-        await interaction.editReply(`Saved **${name || 'your character'}** from **${attachment.name}**. Use `/character read` to review it, or `/character change` to correct any field.`);
+        await interaction.editReply(`Saved **${name || 'your character'}** from **${attachment.name}**. Use the /character read command to review it, or /character change to correct any field.`);
         return;
       }
 

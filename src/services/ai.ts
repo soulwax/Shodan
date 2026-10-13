@@ -5,11 +5,12 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-import { OpenAI, type ChatCompletionMessageParam } from 'openai';
+import { OpenAI } from 'openai';
 import { logger } from '../utils/logger';
 
 type Provider = 'openai' | 'gemini' | 'grok' | 'anthropic';
 type ChatMessage = { role: 'user' | 'assistant' | 'system'; content: string };
+type ChatCompletionMessageParam = OpenAI.Chat.ChatCompletionMessageParam;
 type GenerationOptions = { model?: string; temperature?: number; max_tokens?: number };
 
 const providerNames: Record<Provider, string> = {
