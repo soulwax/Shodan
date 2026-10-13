@@ -23,11 +23,11 @@ import { Command } from '../../types/command';
 const avatarCommand: Command = {
   data: <SlashCommandBuilder>new SlashCommandBuilder()
     .setName('avatar')
-    .setDescription('Embed avatar of a user.')
+    .setDescription('Take a closer look at someone’s avatar.')
     .addMentionableOption((option) =>
       option
         .setName('user')
-        .setDescription('The user whose avatar you want to get.')
+        .setDescription('Whose avatar should I bring up?')
         .setRequired(true)
     ),
   
@@ -39,8 +39,8 @@ const avatarCommand: Command = {
     
     if (!user || !('user' in user)) {
       const embed = new EmbedBuilder()
-        .setTitle('Error')
-        .setDescription('Please mention a valid user.')
+        .setTitle('I couldn’t find that user')
+        .setDescription('Try mentioning someone from this server.')
         .setColor('#ff0000');
         
       await interaction.reply({ embeds: [embed] });
@@ -52,8 +52,8 @@ const avatarCommand: Command = {
     
     if (!userName || !userAvatar) {
       const embed = new EmbedBuilder()
-        .setTitle('Error')
-        .setDescription('Could not retrieve user avatar information.')
+        .setTitle('Avatar unavailable')
+        .setDescription('I couldn’t retrieve that avatar just now.')
         .setColor('#ff0000');
         
       await interaction.reply({ embeds: [embed] });

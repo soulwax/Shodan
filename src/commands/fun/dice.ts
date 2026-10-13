@@ -28,23 +28,23 @@ import { getRandomSecure } from '../../utils/random'
 const diceCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('dice')
-    .setDescription('Generates random numbers between min and max')
+    .setDescription('Roll one or more values from a range you choose.')
     .addIntegerOption((option) =>
       option
         .setName('n')
-        .setDescription('Number of random values to generate (1-100)')
+        .setDescription('How many values should I roll? (1–100)')
         .setRequired(true)
     )
     .addIntegerOption((option) =>
       option
         .setName('min')
-        .setDescription('Minimum value (inclusive)')
+        .setDescription('The lowest possible result.')
         .setRequired(true)
     )
     .addIntegerOption((option) =>
       option
         .setName('max')
-        .setDescription('Maximum value (inclusive)')
+        .setDescription('The highest possible result.')
         .setRequired(true)
     )
     .toJSON(),
@@ -60,7 +60,7 @@ const diceCommand: Command = {
     // Input validation
     if (n <= 0) {
       await interaction.reply({
-        content: 'Number of dice must be at least 1.',
+        content: 'I need at least one roll. Give it another go?',
         ephemeral: true
       })
       return
@@ -88,27 +88,27 @@ const diceCommand: Command = {
       const average = sum / randoms.length
 
       const embed = new EmbedBuilder()
-        .setTitle('🎲 Dice Results')
+        .setTitle('🎲 Here’s what came up')
         .setColor('#4D7F9E')
         .setDescription(randoms.join(', '))
         .addFields(
-          { name: 'Sum', value: sum.toString(), inline: true },
-          { name: 'Average', value: average.toFixed(2), inline: true },
-          { name: 'Range', value: `${min} to ${max}`, inline: true }
+          { name: 'Total', value: sum.toString(), inline: true },
+          { name: 'Average roll', value: average.toFixed(2), inline: true },
+          { name: 'Roll range', value: `${min}–${max}`, inline: true }
         )
-        .setFooter({ text: `Generated ${n} random values` })
+        .setFooter({ text: `Rolled ${n} time${n === 1 ? '' : 's'}` })
 
       // Use embed for nicer presentation if more than 1 roll
       if (n > 1) {
         await interaction.reply({ embeds: [embed] })
       } else {
         // For single rolls, keep it simple
-        await interaction.reply({ content: randoms[0].toString() })
+        await interaction.reply({ content: `🎲 **${randoms[0]}**` })
       }
     } catch (error) {
       console.error('Error in dice command:', error)
       await interaction.reply({
-        content: 'An error occurred while generating random numbers.',
+        content: 'The dice got away from me for a moment. Try rolling again?',
         ephemeral: true
       })
     }

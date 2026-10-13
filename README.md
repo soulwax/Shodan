@@ -49,14 +49,15 @@ Nothing is being logged, so you can be sure that your privacy is respected. This
 
 ### 🧠 AI Integration
 
-- OpenAI-powered tarot readings with personalized interpretations
-- Easily extensible for more AI capabilities
+- Tarot readings with a choice of tone, plus AI-powered roasts, compliments, fortunes, and compatibility reads
+- `/describe` turns an uploaded image into a short narration in a style you choose
+- AI replies automatically try configured providers in this order: OpenAI, Gemini, Grok, then Claude
 
 ## 📋 Requirements
 
 - Node.js 16.x or higher
 - Discord Bot Token
-- OpenAI API Key (for tarot readings)
+- One AI API key: OpenAI, Gemini, Grok (`XAI_API_KEY` or `GROK_API_KEY`), or Anthropic
 
 ## 🚀 Quick Start
 
@@ -79,7 +80,10 @@ Nothing is being logged, so you can be sure that your privacy is respected. This
       BOT_TOKEN=your_discord_bot_token
       CLIENT_ID=your_client_id
       CLIENT_SECRET=your_client_secret
-      OPENAI_API_KEY=your_openai_api_key
+      OPENAI_API_KEY=your_openai_api_key  # optional, preferred when set
+      GEMINI_API_KEY=your_gemini_api_key
+      XAI_API_KEY=your_xai_api_key        # or GROK_API_KEY
+      ANTHROPIC_API_KEY=your_anthropic_api_key
       TRACKING_CHANNEL_ID=your_channel_id
     ```
 

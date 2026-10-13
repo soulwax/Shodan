@@ -30,7 +30,7 @@ type CoinFlipResult = 'Heads' | 'Tails'
 const coinflipCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('coinflip')
-    .setDescription('Flips a coin to determine heads or tails.'),
+    .setDescription('Leave it to a coin: heads or tails?'),
 
   category: 'fun',
   cooldown: 3,
@@ -46,12 +46,12 @@ const coinflipCommand: Command = {
       Heads: {
         color: '#FFD700', // Gold
         emoji: '👑',
-        description: 'The coin shows...'
+        description: 'It lands on…'
       },
       Tails: {
         color: '#C0C0C0', // Silver
         emoji: '🌟',
-        description: 'The coin lands on...'
+        description: 'And the result is…'
       }
     }
 

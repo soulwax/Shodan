@@ -26,7 +26,7 @@ import {
 } from 'discord.js'
 import fs from 'fs'
 import path from 'path'
-import { getOpenAIService } from '../../services/openai'
+import { getAIService } from '../../services/ai'
 import { prisma } from '../../services/prisma'
 import { Card } from '../../types/card' // Import the Card interface
 import { Command } from '../../types/command'
@@ -41,17 +41,17 @@ interface CardData {
 const divineCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('divine')
-    .setDescription('Divine a message from the tarot cards.')
+    .setDescription('Draw a tarot card and get a reading to sit with.')
     .addStringOption((option) =>
       option
         .setName('question')
-        .setDescription('Your divination request.')
+        .setDescription('What would you like the cards to reflect on?')
         .setRequired(true)
     )
     .addBooleanOption((option) =>
       option
         .setName('wholesome')
-        .setDescription('Whether to give a wholesome reading.')
+        .setDescription('Choose a gentle reading, or leave this off for dry humor.')
         .setRequired(false)
     )
     .addStringOption((option) =>
@@ -161,34 +161,26 @@ const divineCommand: Command = {
         }
       }
 
-      const sarcasticPrompt = `you're a tarot reader who's been at this too long and has seen every kind of fool walk through the door. you're not mean, just deeply, deeply tired of everyone's nonsense — including ${interaction.user.username}'s. give a reading that's actually useful but wrapped in enough sarcasm that they'll remember it.
+      const readingContext = `Card: ${card.name}${isReversed ? ' (reversed)' : ' (upright)'}.
+${question ? `Their question: "${question}"` : 'They came without a particular question.'}
+Card details: ${card.desc}
+Traditional meaning: ${isReversed ? card.meaning_rev : card.meaning_up}`
 
-card: ${card.name}${isReversed ? ' — reversed, naturally' : ' — upright, congrats on that at least'}
-${question ? `they want to know: "${question}" — sure, let's do this` : "they didn't even ask a question. classic."}
+      const sarcasticPrompt = `Give a tarot reading in the voice of a dry, funny friend: a little teasing, but ultimately on the person's side. Make the card feel relevant without pretending to know their private life or predict the future. Keep it conversational, useful, and under 800 characters. No lists or headings.
 
-what the card means: ${card.desc}
-the traditional read on this: ${isReversed ? card.meaning_rev : card.meaning_up}
+${readingContext}`
 
-keep it under 800 characters. be specific, be a little sharp, sneak in a genuine insight somewhere so it lands. end with something that stings a little but isn't actually cruel. no numbered lists, no bullet points — just talk like a person.`
+      const wholesomePrompt = `Give a thoughtful tarot reading in the voice of a kind, perceptive friend. Be warm without getting sentimental, and connect the card's meaning to a useful idea the person can consider. Don't claim to know their private life or predict the future. Keep it conversational and under 800 characters. No lists or headings.
 
-      const wholesomePrompt = `you're a tarot reader who genuinely cares about the people who come to you. you're warm but not saccharine — you say real things, you notice details, and you make people feel like someone actually listened. give ${interaction.user.username} a reading that means something.
-
-card: ${card.name}${isReversed ? ' (reversed — not a bad thing, just a different angle)' : ' (upright)'}
-${question ? `their question: "${question}"` : "they came without a question — sometimes that's where the best readings happen."}
-
-what the card means: ${card.desc}
-the traditional read: ${isReversed ? card.meaning_rev : card.meaning_up}
-
-keep it under 800 characters. find the real thing in this card and connect it to them — not in a generic "you have so much potential" way, in a "here's something worth actually sitting with" way. no lists, no headers, just talk.`
+${readingContext}`
 
       const prompt = isWholesome ? wholesomePrompt : sarcasticPrompt
 
       logger.info('[Divine] Requesting AI interpretation')
-      const openAIService = getOpenAIService()
-      const aiInterpretation = await openAIService.createChatCompletion(
+      const aiService = getAIService()
+      const aiInterpretation = await aiService.createChatCompletion(
         [{ role: 'user', content: prompt }],
         {
-          model: 'gpt-4-1106-preview',
           temperature: temperature,
           max_tokens: maxTokens
         }
@@ -236,7 +228,7 @@ keep it under 800 characters. find the real thing in this card and connect it to
       }
 
       const embed = new EmbedBuilder()
-        .setTitle(`🔮 ${card.name}${isReversed ? ' (Reversed)' : ''}`)
+        .setTitle(`🔮 ${card.name}${isReversed ? ' · Reversed' : ''}`)
         .setColor('#9B59B6')
 
       const imagePath = path.join(
@@ -280,8 +272,8 @@ keep it under 800 characters. find the real thing in this card and connect it to
         embed.addFields({
           name:
             index === 0
-              ? 'Traditional Meaning'
-              : 'Traditional Meaning (continued)',
+              ? 'Traditional meaning'
+              : 'Traditional meaning (continued)',
           value: part,
           inline: false
         })
@@ -294,15 +286,15 @@ keep it under 800 characters. find the real thing in this card and connect it to
         embed.addFields({
           name:
             index === 0
-              ? 'Personalized Reading'
-              : 'Personalized Reading (continued)',
+              ? (isWholesome ? 'Your reading' : 'The cards, with commentary')
+              : 'Reading (continued)',
           value: part,
           inline: false
         })
       })
 
       embed.setFooter({
-        text: `The cards offer guidance, but you chart your own path. Trust your intuition.\n\nxSeed: ${cardIndex}-${
+        text: `Take what resonates and leave what doesn’t. The cards are a prompt for reflection.\n\nSeed: ${cardIndex}-${
           isReversed ? '1' : '0'
         }-${temperature}-${isWholesome ? '1' : '0'}`
       })
@@ -344,14 +336,14 @@ keep it under 800 characters. find the real thing in this card and connect it to
     } catch (error) {
       logger.error('[Divine] Error in divine command:', error)
       const errorEmbed = new EmbedBuilder()
-        .setTitle('🔮 Error')
+        .setTitle('🔮 The reading didn’t come through')
         .setDescription(
-          'The spirits are unclear at this moment. Please try again later.'
+          'I couldn’t finish your reading just now. Please try again in a little while.'
         )
         .setColor('#FF0000')
         .addFields({
-          name: 'Error Details',
-          value: 'There was an issue connecting with the mystical forces.'
+          name: 'What happened?',
+          value: 'Something interrupted the reading before it was ready.'
         })
 
       try {

@@ -35,14 +35,14 @@ import { logger } from '../../utils/logger'
 const joinCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('join')
-    .setDescription('Joins a voice channel.'),
+    .setDescription('Invite me into your voice channel.'),
 
   category: 'utility',
 
   async execute(interaction: ChatInputCommandInteraction, client: Client) {
     if (!(interaction.member instanceof GuildMember)) {
       await interaction.reply({
-        content: 'Could not execute this command.',
+        content: 'I can only join a voice channel from a server.',
         ephemeral: true
       })
       return
@@ -53,8 +53,8 @@ const joinCommand: Command = {
 
     if (!voiceChannel) {
       const embed = new EmbedBuilder()
-        .setTitle('Error')
-        .setDescription('You need to join a voice channel first!')
+        .setTitle('Join me in voice')
+        .setDescription('Hop into a voice channel first, and I’ll follow.')
         .setColor('#ff0000')
 
       await interaction.reply({ embeds: [embed] })
@@ -63,8 +63,8 @@ const joinCommand: Command = {
 
     try {
       const embed = new EmbedBuilder()
-        .setTitle('You want me to join a voice channel?')
-        .setDescription(`Let me join ${voiceChannel.name}!`)
+        .setTitle('On my way')
+        .setDescription(`I’m joining ${voiceChannel.name}.`)
         .setColor('#0099ff')
 
       await interaction.reply({ embeds: [embed] })
@@ -80,8 +80,8 @@ const joinCommand: Command = {
           logger.info('Connected to voice channel!')
 
           const successEmbed = new EmbedBuilder()
-            .setTitle('Success')
-            .setDescription(`I joined ${voiceChannel.name}!`)
+            .setTitle('I’m here')
+            .setDescription(`Joined ${voiceChannel.name}.`)
             .setColor('#0099ff')
 
           interaction.followUp({ embeds: [successEmbed] })
@@ -95,15 +95,15 @@ const joinCommand: Command = {
           logger.info('Disconnected from voice channel')
 
           const disconnectEmbed = new EmbedBuilder()
-            .setTitle('Disconnected')
-            .setDescription(`I was disconnected from ${voiceChannel.name}.`)
+            .setTitle('Lost connection')
+            .setDescription(`I got disconnected from ${voiceChannel.name}.`)
             .setColor('#ff0000')
 
           await interaction.followUp({ embeds: [disconnectEmbed] })
         })
       } else {
         const embed = new EmbedBuilder()
-          .setTitle('Error')
+          .setTitle('I can’t join just yet')
           .setDescription(
             `I don't have permission to join ${voiceChannel.name}.`
           )
@@ -115,9 +115,9 @@ const joinCommand: Command = {
       logger.error('Error joining voice channel:', error)
 
       const embed = new EmbedBuilder()
-        .setTitle('Error')
+          .setTitle('That didn’t work')
         .setDescription(
-          'There was an error while trying to join the voice channel.'
+            'I ran into a problem joining that voice channel. Give it another try in a moment.'
         )
         .setColor('#ff0000')
 

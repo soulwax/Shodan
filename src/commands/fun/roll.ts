@@ -24,11 +24,11 @@ import { rollDieSecure } from '../../utils/random';
 const rollCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('roll')
-    .setDescription('Rolls dice in NdX format (e.g., 2d6 for two six-sided dice)')
+    .setDescription('Roll dice using familiar notation, like 2d6 for two six-sided dice.')
     .addStringOption((option) =>
       option
         .setName('dice_notation')
-        .setDescription('Dice notation (NdX)')
+        .setDescription('What should I roll? For example: 2d6')
         .setRequired(true)
     ) as SlashCommandBuilder,
   
@@ -43,7 +43,7 @@ const rollCommand: Command = {
 
       if (!match) {
         throw new Error(
-          'Invalid dice notation. Use NdX or NwX format (e.g., 2d6 or 3w8).'
+          'I couldn’t read that roll. Try a format like `2d6` or `3w8`.'
         );
       }
 
@@ -52,7 +52,7 @@ const rollCommand: Command = {
 
       if (numDice < 1 || numSides < 2) {
         throw new Error(
-          'Invalid number of dice or sides. Must have at least 1 die and 2 sides.'
+          'Give me at least one die, with at least two sides.'
         );
       }
 
@@ -62,14 +62,14 @@ const rollCommand: Command = {
       }
 
       const total = rolls.reduce((a, b) => a + b, 0);
-      const message = `You rolled ${diceNotation}: ${rolls.join(', ')} (Total: ${total})`;
+      const message = `🎲 ${diceNotation}: ${rolls.join(', ')}\nTotal: **${total}**`;
       
       await interaction.reply({ content: message });
     } catch (error) {
       if (error instanceof Error) {
         await interaction.reply({ content: error.message });
       } else {
-        await interaction.reply({ content: 'An unknown error occurred' });
+        await interaction.reply({ content: 'Something went wrong with that roll. Try again?' });
       }
     }
   },

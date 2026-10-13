@@ -27,7 +27,7 @@ import { Command } from '../../types/command'
 const pingCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('ping')
-    .setDescription('Replies with the bot latency'),
+    .setDescription('Check the bot’s connection and response time.'),
 
   category: 'utility',
   cooldown: 3,
@@ -49,9 +49,9 @@ const pingCommand: Command = {
       germanGreetings[Math.floor(Math.random() * germanGreetings.length)]
 
     const embed = new EmbedBuilder()
-      .setTitle('Pong!')
+      .setTitle('🏓 Pong!')
       .setDescription(
-        `⏱️ Latency: ${latency}ms\n💓 API Latency: ${Math.round(
+        `⏱️ Response time: ${latency} ms\n💓 Discord connection: ${Math.round(
           client.ws.ping
         )}ms\n\n${greeting}`
       )

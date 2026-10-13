@@ -22,7 +22,7 @@ import {
   GuildMember,
   SlashCommandBuilder
 } from 'discord.js';
-import { getOpenAIService } from '../../services/openai';
+import { getAIService } from '../../services/ai';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
 
@@ -31,7 +31,7 @@ const fortuneCommand: Command = {
     .setName('fortune')
     .setDescription('Get your fortune. Take it or leave it.')
     .addUserOption((option) =>
-      option.setName('target').setDescription('Get a fortune for someone else (optional)').setRequired(false)
+      option.setName('target').setDescription('Ask for someone else’s fortune (optional)').setRequired(false)
     ),
 
   category: 'fun',
@@ -45,34 +45,25 @@ const fortuneCommand: Command = {
     const member = interaction.guild?.members.cache.get(targetUser.id) as GuildMember | undefined;
 
     const displayName = member?.displayName ?? targetUser.username;
-    const roles = member?.roles.cache
-      .filter(r => r.name !== '@everyone')
-      .map(r => r.name)
-      .join(', ') || 'none';
-    const joinedDaysAgo = member?.joinedAt
-      ? Math.floor((Date.now() - member.joinedAt.getTime()) / 86400000)
-      : null;
     const avatarUrl = targetUser.displayAvatarURL({ size: 256, extension: 'png' });
 
-    const systemPrompt = `you write fortunes. not fortune-cookie clichés — actual ones. the kind that feel vaguely specific, like you know something. one to three sentences. they should land somewhere between a little wise and a little unsettling, like something a clever stranger said once that you never forgot.
+    const systemPrompt = `Write a short fortune that feels like a perceptive friend noticed something and left a curious thought behind. Keep it to one or two sentences: a little wise, maybe faintly strange, but still grounded and human. Skip horoscope clichés, rhymes, grand promises, and fake mystical language. Don't use the person's name or claim to know their future. If the image offers a harmless detail, you can let it inspire the fortune without pretending it reveals anything personal.`;
 
-hard rules: no bullet points, no lists. don't address the person by name inside the fortune itself — write it to them, not about them. don't start with "you will" or "soon" or "the stars." no vague filler like "great things await" or "trust the journey." no rhyming. no fake mysticism with words like "cosmos," "universe," "fate," "destiny," or "path." be weird and specific in a way that feels earned, not random. write it like a human wrote it, not like a horoscope generator.`;
-
-    const textPrompt = `write a fortune for ${displayName} (username: ${targetUser.username}).${joinedDaysAgo !== null ? ` they've been around for ${joinedDaysAgo} days.` : ''} their roles: ${roles}. their pfp is attached — if something in it gives you an angle, use it.${!isSelf ? ` ${interaction.user.username} is asking on their behalf.` : ''}`;
+    const textPrompt = `Leave a small fortune for ${displayName}.${!isSelf ? ` ${interaction.user.username} asked for it on their behalf.` : ''} Their avatar is attached; use it only as a light creative spark, not as evidence about the person.`;
 
     try {
-      const openai = getOpenAIService();
-      const fortune = await openai.createVisionCompletion(systemPrompt, textPrompt, avatarUrl, {
+      const ai = getAIService();
+      const fortune = await ai.createVisionCompletion(systemPrompt, textPrompt, avatarUrl, {
         temperature: 1.0,
         max_tokens: 150
       });
 
-      if (!fortune) throw new Error('Empty response');
+      if (!fortune?.trim()) throw new Error('Empty AI response');
 
       const embed = new EmbedBuilder()
         .setColor(0xf4c542)
         .setTitle(`🥠 Fortune for ${displayName}`)
-        .setDescription(`*${fortune}*`)
+        .setDescription(fortune.trim())
         .setThumbnail(avatarUrl)
         .setFooter({
           text: isSelf
@@ -84,7 +75,7 @@ hard rules: no bullet points, no lists. don't address the person by name inside 
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logger.error('[Fortune] Failed to generate fortune:', error);
-      await interaction.editReply({ content: "The fortune cookie is empty. That's probably meaningful." });
+      await interaction.editReply({ content: 'My crystal ball went a little foggy. Try again in a moment?' });
     }
   }
 };

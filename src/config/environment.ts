@@ -26,7 +26,11 @@ const envSchema = z.object({
   CLIENT_ID: z.string(),
   TRACKING_CHANNEL_ID: z.string(),
   LANGUAGE_CHANNEL_ID: z.string().optional(),
-  OPENAI_API_KEY: z.string().optional()
+  OPENAI_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
+  XAI_API_KEY: z.string().optional(),
+  GROK_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional()
 })
 
 type EnvVariables = z.infer<typeof envSchema>

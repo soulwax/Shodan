@@ -23,11 +23,11 @@ import { Command } from '../../types/command';
 const echoCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('echo')
-    .setDescription('Echos a message.')
+    .setDescription('Have me repeat a message back to you.')
     .addStringOption((option) =>
       option
         .setName('message')
-        .setDescription('The message you want to echo.')
+        .setDescription('What should I repeat?')
         .setRequired(true)
     )
     .toJSON(),
@@ -39,12 +39,12 @@ const echoCommand: Command = {
     const message = interaction.options.getString('message');
     
     if (!message) {
-      await interaction.reply({ content: 'No message provided.', ephemeral: true });
+      await interaction.reply({ content: 'Send me a message and I’ll echo it back.', ephemeral: true });
       return;
     }
     
     const embed = new EmbedBuilder()
-      .setTitle('Echo')
+      .setTitle('You said…')
       .setDescription(message)
       .setColor('#00ff00');
       

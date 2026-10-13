@@ -24,7 +24,7 @@ import {
   SlashCommandBuilder,
   User
 } from 'discord.js';
-import { getOpenAIService } from '../../services/openai';
+import { getAIService } from '../../services/ai';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
 
@@ -42,12 +42,12 @@ function scoreBar(score: number): string {
 const shipCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('ship')
-    .setDescription('How compatible are two people, really.')
+    .setDescription('See what the group-chat compatibility jury thinks.')
     .addUserOption((option) =>
-      option.setName('first').setDescription('First person').setRequired(true)
+      option.setName('first').setDescription('First half of the pairing').setRequired(true)
     )
     .addUserOption((option) =>
-      option.setName('second').setDescription('Second person (leave blank to ship with yourself)').setRequired(false)
+      option.setName('second').setDescription('Second half (leave blank to pair them with you)').setRequired(false)
     ),
 
   category: 'fun',
@@ -60,7 +60,7 @@ const shipCommand: Command = {
     const userB = interaction.options.getUser('second') ?? interaction.user;
 
     if (userA.id === userB.id) {
-      await interaction.editReply({ content: 'Shipping someone with themselves. Bold. Consistent. A little concerning.' });
+      await interaction.editReply({ content: 'A self-ship? The jury is intrigued, but this one needs two different people.' });
       return;
     }
 
@@ -83,18 +83,16 @@ const shipCommand: Command = {
     const avatarB = userB.displayAvatarURL({ size: 256, extension: 'png' });
 
     // Use the less-fetched avatar as the vision image; mention both in text
-    const systemPrompt = `you're the friend who has opinions about everyone's compatibility — not a matchmaker, just someone who pays attention. write two or three sentences about how these two people work together (or don't). be specific to what you know about them. don't editorialize about the score — just talk about the people.
-
-hard rules: no bullet points, no lists. don't open with either person's name. don't say "these two" as an opener. no rom-com language ("sparks fly," "match made in heaven," "opposites attract"). no hedging ("it depends," "who knows"). pick a read and commit to it. write the way a person talks, not the way a bot summarizes.`;
+    const systemPrompt = `Give a playful, affectionate read on this pair, like a friend teasing them in a group chat. Write two or three natural sentences and make a clear, funny observation. Let the score set the general mood, but don't explain or repeat it. Avoid stock romance lines and don't claim to know anything private about either person. Their names, roles, and the avatar are just light context; don't infer personality from appearance.`;
 
     const textPrompt = `give a quick read on the compatibility between ${nameA} and ${nameB}.
 ${nameA}: username ${userA.username}, roles: ${rolesA}.
 ${nameB}: username ${userB.username}, roles: ${rolesB}.
-their score came out to ${score}/100 — your commentary should feel consistent with that without spelling it out. ${nameA}'s pfp is attached; ${nameB} is at ${avatarB}.`;
+The playful compatibility score is ${score}/100. ${nameA}'s avatar is attached, but don't draw conclusions about either person from their appearance.`;
 
     try {
-      const openai = getOpenAIService();
-      const commentary = await openai.createVisionCompletion(systemPrompt, textPrompt, avatarA, {
+      const ai = getAIService();
+      const commentary = await ai.createVisionCompletion(systemPrompt, textPrompt, avatarA, {
         temperature: 0.95,
         max_tokens: 180
       });
@@ -108,13 +106,13 @@ their score came out to ${score}/100 — your commentary should feel consistent 
         .setTitle(`💘 ${nameA} + ${nameB}`)
         .setDescription(`**${shipName}** · ${score}/100\n${bar}\n\n${commentary}`)
         .setThumbnail(avatarA)
-        .setFooter({ text: `requested by ${interaction.user.username}` });
+        .setFooter({ text: `A little matchmaking, courtesy of ${interaction.user.username}` });
 
       logger.info(`[Ship] ${interaction.user.username} shipped ${nameA} with ${nameB} — ${score}/100`);
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logger.error('[Ship] Failed to generate ship result:', error);
-      await interaction.editReply({ content: 'The compatibility engine imploded. Make of that what you will.' });
+      await interaction.editReply({ content: 'The compatibility jury has gone quiet. Try again in a little bit.' });
     }
   }
 };

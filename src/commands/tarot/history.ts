@@ -29,11 +29,11 @@ import { logger } from '../../utils/logger'
 const historyCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('history')
-    .setDescription('View your tarot reading history')
+    .setDescription('Revisit a few of your past tarot readings.')
     .addIntegerOption((option) =>
       option
         .setName('limit')
-        .setDescription('Number of readings to retrieve (default: 5, max: 10)')
+        .setDescription('How many readings should I bring back? (1–10, default 5)')
         .setRequired(false)
         .setMinValue(1)
         .setMaxValue(10)
@@ -86,20 +86,20 @@ const historyCommand: Command = {
       if (readings.length === 0) {
         await interaction.editReply({
           content:
-            "You don't have any tarot readings yet. Try using the `/divine` command first!"
+            'No readings saved yet. Try /divine and your next one will be here.'
         })
         return
       }
 
       // Notify user that readings are being sent
       await interaction.editReply({
-        content: `I'll send your last ${readings.length} tarot reading(s) to your DMs.`
+        content: `I’m sending ${readings.length} past reading${readings.length === 1 ? '' : 's'} to your DMs.`
       })
 
       // Send an initial DM to establish the channel
       const dmChannel = await interaction.user.createDM()
       await dmChannel.send({
-        content: `Here are your last ${readings.length} tarot reading(s):`
+        content: `A few moments from your tarot history (${readings.length}):`
       })
 
       // Send each reading as a separate embed
@@ -112,15 +112,15 @@ const historyCommand: Command = {
             `🔮 ${reading.cardName}${reading.isReversed ? ' (Reversed)' : ''}`
           )
           .setColor('#9B59B6')
-          .setDescription('Your past tarot reading')
+          .setDescription('A reading from your archive')
           .addFields(
             {
-              name: 'Date',
+              name: 'When',
               value: `${readingDate} at ${readingTime}`,
               inline: true
             },
             {
-              name: 'Seed',
+              name: 'Reading seed',
               value: reading.seed || 'Unknown',
               inline: true
             }
@@ -129,7 +129,7 @@ const historyCommand: Command = {
         // Add question if present
         if (reading.question) {
           embed.addFields({
-            name: 'Your Question',
+            name: 'The question you brought',
             value: reading.question,
             inline: false
           })
@@ -159,14 +159,14 @@ const historyCommand: Command = {
         const interpretationParts = splitLongText(reading.interpretation)
         interpretationParts.forEach((part, index) => {
           embed.addFields({
-            name: index === 0 ? 'Interpretation' : 'Interpretation (continued)',
+            name: index === 0 ? 'Your reading' : 'Your reading (continued)',
             value: part,
             inline: false
           })
         })
 
         embed.setFooter({
-          text: `Reading ID: ${reading.id} • Use /divine with seed: ${reading.seed} to revisit this reading`
+          text: `Reading ${reading.id} · Use /divine with seed ${reading.seed} to revisit it`
         })
 
         // Send this reading's embed
@@ -188,12 +188,12 @@ const historyCommand: Command = {
       if (interaction.deferred) {
         await interaction.editReply({
           content:
-            'There was an error retrieving your tarot reading history. Please try again later.'
+            'I couldn’t retrieve your tarot history just now. Please try again in a little while.'
         })
       } else {
         await interaction.reply({
           content:
-            'There was an error retrieving your tarot reading history. Please try again later.',
+            'I couldn’t retrieve your tarot history just now. Please try again in a little while.',
           ephemeral: true
         })
       }

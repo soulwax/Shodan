@@ -170,7 +170,7 @@ class TarotService {
 }
 
 module.exports = new TarotService();`,
-    'openai.js': `// File: src/services/openai.js
+    'ai.js': `// File: src/services/ai.js
 const { OpenAI } = require('openai');
 const config = require('../config/environment');
 

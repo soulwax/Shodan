@@ -37,7 +37,7 @@ touch src/commands/index.ts
 touch src/events/index.ts
 
 # Create service files
-touch src/services/openai.ts
+touch src/services/ai.ts
 touch src/services/database.ts
 
 # Create utility files

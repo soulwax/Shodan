@@ -23,14 +23,14 @@ import { Command } from '../../types/command';
 const membersCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('members')
-    .setDescription('Lists members of a given server.'),
+    .setDescription('Show the members of this server.'),
   
   category: 'moderation',
   cooldown: 10,
 
   async execute(interaction: ChatInputCommandInteraction, client: Client) {
     if (!interaction.guild) {
-      await interaction.reply({ content: 'This command can only be used in a server.', ephemeral: true });
+      await interaction.reply({ content: 'The member list is only available inside a server.', ephemeral: true });
       return;
     }
     
@@ -63,8 +63,8 @@ const membersCommand: Command = {
       console.error('Error fetching members:', error);
       
       const embed = new EmbedBuilder()
-        .setTitle('Error')
-        .setDescription('Failed to fetch member list. Make sure I have the necessary permissions.')
+        .setTitle('Couldn’t load the member list')
+        .setDescription('I couldn’t retrieve the members. Check that I have permission to view them, then try again.')
         .setColor('#ff0000');
         
       if (interaction.deferred) {

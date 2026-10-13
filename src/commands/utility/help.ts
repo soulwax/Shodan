@@ -24,15 +24,15 @@ import { Command } from '../../types/command';
 const helpCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('help')
-    .setDescription('Lists all commands.'),
+    .setDescription('See what I can do.'),
 
   category: 'utility',
   cooldown: 5,
 
   async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
     const embed = new EmbedBuilder()
-      .setTitle('Help')
-      .setDescription('List of all commands:')
+      .setTitle('Need a hand?')
+      .setDescription('Here are the commands available to you:')
       .setColor('#15999f')
       .setAuthor({
         name: client.user?.tag || 'Shodan Bot',

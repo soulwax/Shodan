@@ -23,7 +23,7 @@ import { Command } from '../../types/command';
 const bannedCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('banned')
-    .setDescription('Lists banned users.')
+    .setDescription('Show the users currently banned from this server.')
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
   
   category: 'moderation',
@@ -31,7 +31,7 @@ const bannedCommand: Command = {
 
   async execute(interaction: ChatInputCommandInteraction, client: Client) {
     if (!interaction.guild) {
-      await interaction.reply({ content: 'This command can only be used in a server.', ephemeral: true });
+      await interaction.reply({ content: 'This list is only available inside a server.', ephemeral: true });
       return;
     }
     
@@ -42,7 +42,7 @@ const bannedCommand: Command = {
       if (list.length < 1) {
         const embed = new EmbedBuilder()
           .setTitle(`${interaction.guild.name}'s Bans`)
-          .setDescription('No bans found.')
+          .setDescription('The ban list is clear.')
           .setColor('#de1042');
           
         await interaction.reply({ embeds: [embed] });
@@ -58,8 +58,8 @@ const bannedCommand: Command = {
       console.error('Error fetching bans:', error);
       
       const embed = new EmbedBuilder()
-        .setTitle('Error')
-        .setDescription('Failed to fetch ban list. Make sure I have the necessary permissions.')
+        .setTitle('Couldn’t load the ban list')
+        .setDescription('I couldn’t retrieve the list. Check that I have permission to view bans, then try again.')
         .setColor('#ff0000');
         
       await interaction.reply({ embeds: [embed], ephemeral: true });
