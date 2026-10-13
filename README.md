@@ -32,7 +32,7 @@ Shodan is a Discord bot for D&D campaign support, AI assisted prompts, tarot rea
 - pnpm (the repository pins its package manager version)
 - A Discord bot token and application/client ID
 - A PostgreSQL database
-- At least one supported AI API key for AI features. AI keys are optional for starting the bot, but AI commands need one to produce responses.
+- At least one supported AI provider credential for AI features. Credentials are optional for starting the bot, but AI commands need one to produce responses.
 
 ## Configuration
 
@@ -43,14 +43,18 @@ BOT_TOKEN=your_discord_bot_token
 CLIENT_ID=your_discord_application_id
 DATABASE_URL=postgresql://user:password@host:5432/database?sslmode=require
 
-# Add one or more AI keys. Providers are tried in this order:
+# Add one or more AI provider credentials. Providers are tried in this order:
 OPENAI_API_KEY=
 GEMINI_API_KEY=
 XAI_API_KEY= # or GROK_API_KEY
 ANTHROPIC_API_KEY=
+CF_TOKEN=
+CF_ACCOUNT_ID=
 ```
 
-The bot requires `BOT_TOKEN`, `CLIENT_ID`, and `DATABASE_URL` to start. The AI keys are optional for non-AI commands. If multiple keys are configured, Shodan tries OpenAI, Gemini, Grok, then Anthropic, moving to the next configured provider when one fails.
+The bot requires `BOT_TOKEN`, `CLIENT_ID`, and `DATABASE_URL` to start. AI credentials are optional for non-AI commands. If multiple providers are configured, Shodan tries OpenAI, Gemini, Grok, Anthropic, then Cloudflare Workers AI, moving to the next configured provider when one fails. Cloudflare requires both `CF_TOKEN` and `CF_ACCOUNT_ID`; it uses Workers AI for text fallback and a vision model for image requests.
+
+AI requests are rate-limited per provider to 10 per minute by default, with at most two running at once and a bounded waiting queue. Set `AI_REQUESTS_PER_MINUTE` to a value from 1 to 60 to adjust the per-provider cap. Temporary HTTP 429 and 5xx responses honor `Retry-After` and receive up to two retries.
 
 AI features send the content needed for the request to the configured AI provider. Depending on the command, this can include a question, campaign journal notes, character sheet text, or an uploaded image.
 

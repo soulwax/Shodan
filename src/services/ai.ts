@@ -8,21 +8,91 @@
 import { OpenAI } from 'openai';
 import { logger } from '../utils/logger';
 
-type Provider = 'openai' | 'gemini' | 'grok' | 'anthropic';
+type Provider = 'openai' | 'gemini' | 'grok' | 'anthropic' | 'cloudflare';
 type ChatMessage = { role: 'user' | 'assistant' | 'system'; content: string };
 type ChatCompletionMessageParam = OpenAI.Chat.ChatCompletionMessageParam;
 type GenerationOptions = { model?: string; temperature?: number; max_tokens?: number };
+type ProviderJob = {
+  run: () => Promise<string | null>;
+  resolve: (value: string | null) => void;
+  reject: (error: unknown) => void;
+};
+type ProviderQueue = {
+  jobs: ProviderJob[];
+  starts: number[];
+  active: number;
+  nextAllowedAt: number;
+  blockedUntil: number;
+  timer?: ReturnType<typeof setTimeout>;
+};
+
+const RATE_WINDOW_MS = 60_000;
+const MAX_CONCURRENT_REQUESTS_PER_PROVIDER = 2;
+const MAX_QUEUED_REQUESTS_PER_PROVIDER = 20;
+const MAX_TRANSIENT_RETRIES = 2;
+const RETRY_DELAYS_MS = [1_000, 3_000];
+
+class ProviderHttpError extends Error {
+  constructor(message: string, readonly status: number, readonly retryAfterMs?: number) {
+    super(message);
+    this.name = 'ProviderHttpError';
+  }
+}
+
+function errorStatus(error: unknown): number | undefined {
+  return error && typeof error === 'object' && 'status' in error && typeof error.status === 'number'
+    ? error.status
+    : undefined;
+}
+
+function errorRetryAfter(error: unknown): number | undefined {
+  if (!error || typeof error !== 'object') return undefined;
+  if ('retryAfterMs' in error && typeof error.retryAfterMs === 'number') return error.retryAfterMs;
+  if (!('headers' in error) || !error.headers) return undefined;
+  const headers = error.headers;
+  const value = headers instanceof Headers
+    ? headers.get('retry-after')
+    : typeof headers === 'object' && 'retry-after' in headers
+      ? String(headers['retry-after'])
+      : undefined;
+  if (!value) return undefined;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+  const dateMs = Date.parse(value) - Date.now();
+  return Number.isFinite(dateMs) ? Math.max(0, dateMs) : undefined;
+}
+
+async function providerHttpError(provider: string, response: Response): Promise<ProviderHttpError> {
+  let message = 'No provider error detail';
+  try {
+    const body = await response.json() as { error?: { message?: string; status?: string }; errors?: Array<{ message?: string }> };
+    message = body.error?.message || body.error?.status || body.errors?.map(error => error.message).filter(Boolean).join('; ') || message;
+  } catch {
+    // Some provider gateways return non-JSON errors.
+  }
+  const retryAfter = response.headers.get('retry-after');
+  const seconds = retryAfter ? Number(retryAfter) : NaN;
+  const retryAt = retryAfter && !Number.isFinite(seconds) ? Date.parse(retryAfter) - Date.now() : NaN;
+  const retryAfterMs = Number.isFinite(seconds)
+    ? Math.max(0, seconds * 1000)
+    : Number.isFinite(retryAt) ? Math.max(0, retryAt) : undefined;
+  return new ProviderHttpError(`${provider} API returned HTTP ${response.status}: ${message}`, response.status, retryAfterMs);
+}
 
 const providerNames: Record<Provider, string> = {
   openai: 'OpenAI',
   gemini: 'Gemini',
   grok: 'Grok',
-  anthropic: 'Claude'
+  anthropic: 'Claude',
+  cloudflare: 'Cloudflare Workers AI'
 };
 
 /** Shared AI service with automatic provider selection and failover. */
 export class AIService {
   private readonly apiKeys: Partial<Record<Provider, string>>;
+  private readonly cloudflareAccountId?: string;
+  private readonly requestsPerMinute: number;
+  private readonly providerQueues = new Map<Provider, ProviderQueue>();
 
   constructor(env: NodeJS.ProcessEnv = process.env) {
     const grokKey = env.XAI_API_KEY?.trim() || env.GROK_API_KEY?.trim();
@@ -30,8 +100,14 @@ export class AIService {
       openai: env.OPENAI_API_KEY?.trim() || undefined,
       gemini: env.GEMINI_API_KEY?.trim() || undefined,
       grok: grokKey || undefined,
-      anthropic: env.ANTHROPIC_API_KEY?.trim() || undefined
+      anthropic: env.ANTHROPIC_API_KEY?.trim() || undefined,
+      cloudflare: env.CF_TOKEN?.trim() && env.CF_ACCOUNT_ID?.trim() ? env.CF_TOKEN.trim() : undefined
     };
+    this.cloudflareAccountId = env.CF_ACCOUNT_ID?.trim() || undefined;
+    const requestedRate = Number(env.AI_REQUESTS_PER_MINUTE);
+    this.requestsPerMinute = Number.isInteger(requestedRate) && requestedRate >= 1 && requestedRate <= 60
+      ? requestedRate
+      : 10;
   }
 
   async createChatCompletion(messages: ChatMessage[], options: GenerationOptions = {}): Promise<string | null> {
@@ -55,8 +131,11 @@ export class AIService {
     let imageDataPromise: Promise<{ mimeType: string; data: string }> | undefined;
 
     return this.withProviderFallback(provider => {
-      if (provider === 'gemini' || provider === 'anthropic') {
+      if (provider === 'gemini' || provider === 'anthropic' || provider === 'cloudflare') {
         imageDataPromise ??= this.downloadImage(imageUrl);
+        if (provider === 'cloudflare') {
+          return imageDataPromise.then(image => this.generateCloudflare(messages, { temperature, max_tokens }, image));
+        }
         return imageDataPromise.then(image =>
           provider === 'gemini'
             ? this.generateGemini(messages, { temperature, max_tokens }, image)
@@ -70,17 +149,19 @@ export class AIService {
   private async withProviderFallback(
     request: (provider: Provider) => Promise<string | null>
   ): Promise<string | null> {
-    const providers = (['openai', 'gemini', 'grok', 'anthropic'] as Provider[])
+    const providers = (['openai', 'gemini', 'grok', 'anthropic', 'cloudflare'] as Provider[])
       .filter(provider => this.apiKeys[provider]);
 
     if (providers.length === 0) {
-      throw new Error('Set at least one AI key: OPENAI_API_KEY, GEMINI_API_KEY, XAI_API_KEY, or ANTHROPIC_API_KEY');
+      throw new Error('Set at least one AI provider key: OPENAI_API_KEY, GEMINI_API_KEY, XAI_API_KEY, ANTHROPIC_API_KEY, or CF_TOKEN with CF_ACCOUNT_ID');
     }
 
     let lastError: unknown;
     for (const provider of providers) {
       try {
-        const response = await request(provider);
+        const response = await this.withProviderRetries(provider, () =>
+          this.enqueueProviderRequest(provider, () => request(provider))
+        );
         if (response?.trim()) {
           logger.info(`AI response generated with ${providerNames[provider]}`);
           return response;
@@ -89,8 +170,9 @@ export class AIService {
         logger.warn(`${providerNames[provider]} returned an empty response; trying the next configured provider`);
       } catch (error) {
         lastError = error;
-        const errorName = error instanceof Error ? error.name : 'Unknown error';
-        logger.warn(`${providerNames[provider]} request failed (${errorName}); trying the next configured provider`);
+        const status = errorStatus(error);
+        const detail = error instanceof Error ? error.message : 'Unknown error';
+        logger.warn(`${providerNames[provider]} request failed${status ? ` with HTTP ${status}` : ''}: ${detail}; trying the next configured provider`);
       }
     }
 
@@ -101,6 +183,72 @@ export class AIService {
     throw new Error('All configured AI providers failed to generate a response');
   }
 
+  private getProviderQueue(provider: Provider): ProviderQueue {
+    let queue = this.providerQueues.get(provider);
+    if (!queue) {
+      queue = { jobs: [], starts: [], active: 0, nextAllowedAt: 0, blockedUntil: 0 };
+      this.providerQueues.set(provider, queue);
+    }
+    return queue;
+  }
+
+  private enqueueProviderRequest(provider: Provider, run: () => Promise<string | null>): Promise<string | null> {
+    const queue = this.getProviderQueue(provider);
+    if (queue.jobs.length >= MAX_QUEUED_REQUESTS_PER_PROVIDER) {
+      return Promise.reject(new Error(`${providerNames[provider]} request queue is full`));
+    }
+    return new Promise((resolve, reject) => {
+      queue.jobs.push({ run, resolve, reject });
+      this.pumpProviderQueue(provider, queue);
+    });
+  }
+
+  private pumpProviderQueue(provider: Provider, queue: ProviderQueue): void {
+    if (queue.timer || queue.active >= MAX_CONCURRENT_REQUESTS_PER_PROVIDER || !queue.jobs.length) return;
+    const now = Date.now();
+    queue.starts = queue.starts.filter(start => now - start < RATE_WINDOW_MS);
+    const rateWindowAt = queue.starts.length >= this.requestsPerMinute
+      ? queue.starts[0] + RATE_WINDOW_MS
+      : 0;
+    const allowedAt = Math.max(queue.nextAllowedAt, queue.blockedUntil, rateWindowAt);
+    if (allowedAt > now) {
+      queue.timer = setTimeout(() => {
+        queue.timer = undefined;
+        this.pumpProviderQueue(provider, queue);
+      }, allowedAt - now);
+      return;
+    }
+
+    const job = queue.jobs.shift();
+    if (!job) return;
+    queue.starts.push(now);
+    queue.nextAllowedAt = now + RATE_WINDOW_MS / this.requestsPerMinute;
+    queue.active += 1;
+    void job.run()
+      .then(job.resolve, job.reject)
+      .finally(() => {
+        queue.active -= 1;
+        this.pumpProviderQueue(provider, queue);
+      });
+    this.pumpProviderQueue(provider, queue);
+  }
+
+  private async withProviderRetries<T>(provider: Provider, request: () => Promise<T>): Promise<T> {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await request();
+      } catch (error) {
+        const status = errorStatus(error);
+        const retryable = status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+        if (!retryable || attempt >= MAX_TRANSIENT_RETRIES) throw error;
+        const delay = errorRetryAfter(error) ?? RETRY_DELAYS_MS[attempt];
+        const queue = this.getProviderQueue(provider);
+        queue.blockedUntil = Math.max(queue.blockedUntil, Date.now() + delay);
+        logger.warn(`${providerNames[provider]} returned HTTP ${status}; retry ${attempt + 1}/${MAX_TRANSIENT_RETRIES} after ${Math.ceil(delay / 1000)}s`);
+      }
+    }
+  }
+
   private async generateText(
     provider: Provider,
     messages: ChatMessage[],
@@ -108,6 +256,7 @@ export class AIService {
   ): Promise<string | null> {
     if (provider === 'gemini') return this.generateGemini(messages, options);
     if (provider === 'anthropic') return this.generateAnthropic(messages, options);
+    if (provider === 'cloudflare') return this.generateCloudflare(messages, options);
     return this.generateOpenAICompatible(provider, messages, options);
   }
 
@@ -173,7 +322,7 @@ export class AIService {
         }
       })
     });
-    if (!response.ok) throw new Error(`Gemini API returned HTTP ${response.status}`);
+    if (!response.ok) throw await providerHttpError('Gemini', response);
     const result = await response.json() as {
       candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
     };
@@ -212,9 +361,46 @@ export class AIService {
         messages: anthropicMessages
       })
     });
-    if (!response.ok) throw new Error(`Anthropic API returned HTTP ${response.status}`);
+    if (!response.ok) throw await providerHttpError('Anthropic', response);
     const result = await response.json() as { content?: Array<{ type?: string; text?: string }> };
     return result.content?.filter(part => part.type === 'text').map(part => part.text || '').join('') || null;
+  }
+
+  private async generateCloudflare(
+    messages: ChatMessage[],
+    options: GenerationOptions,
+    image?: { mimeType: string; data: string }
+  ): Promise<string | null> {
+    if (!this.cloudflareAccountId) throw new Error('CF_ACCOUNT_ID is required with CF_TOKEN');
+
+    const model = image
+      ? '@cf/meta/llama-3.2-11b-vision-instruct'
+      : options.model || '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+    const prompt = [
+      messages.find(message => message.role === 'system')?.content,
+      ...messages.filter(message => message.role !== 'system').map(message => `${message.role}: ${message.content}`)
+    ].filter(Boolean).join('\n\n');
+    const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(this.cloudflareAccountId)}/ai/run/${model}`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${this.apiKeys.cloudflare!}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        ...(image ? { image: `data:${image.mimeType};base64,${image.data}` } : {}),
+        ...(options.temperature === undefined ? {} : { temperature: options.temperature }),
+        max_tokens: options.max_tokens ?? 1000
+      })
+    });
+    if (!response.ok) throw await providerHttpError('Cloudflare Workers AI', response);
+    const payload = await response.json() as {
+      result?: { response?: string };
+      success?: boolean;
+      errors?: Array<{ message?: string }>;
+    };
+    if (payload.success === false || payload.errors?.length) {
+      const detail = payload.errors?.map(error => error.message).filter(Boolean).join('; ') || 'unknown error';
+      throw new Error(`Cloudflare Workers AI request failed: ${detail}`);
+    }
+    return payload.result?.response || null;
   }
 
   private async downloadImage(imageUrl: string): Promise<{ mimeType: string; data: string }> {

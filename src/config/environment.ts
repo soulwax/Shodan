@@ -29,7 +29,10 @@ const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   XAI_API_KEY: z.string().optional(),
   GROK_API_KEY: z.string().optional(),
-  ANTHROPIC_API_KEY: z.string().optional()
+  ANTHROPIC_API_KEY: z.string().optional(),
+  CF_TOKEN: z.string().optional(),
+  CF_ACCOUNT_ID: z.string().optional(),
+  AI_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).max(60).default(10)
 })
 
 type EnvVariables = z.infer<typeof envSchema>
