@@ -26,6 +26,15 @@ Nothing is being logged, so you can be sure that your privacy is respected. This
   - Options for wholesome or sarcastic readings
   - Full Rider-Waite tarot deck with custom card imagery
 
+### 🎲 D&D
+
+- `/store` and `/balance` - Keep a separate adventurer bank in each server.
+- `/character init`, `/character read`, `/character remember`, and `/character change` - Import a searchable PDF sheet with AI, view it, save private character notes, and update common fields.
+- `/purge-char` - Erase your own saved character and notes from the current server.
+- `/story add` and `/story recent` - Add campaign lore tidbits and read the latest journal entries.
+
+Character sheets and campaign journals are stored under that server’s Main Campaign. Character data is keyed by both campaign and Discord user; story entries are shared within the server.
+
 ### 🛡️ Moderation Tools
 
 - `/purge` - Delete multiple messages at once
