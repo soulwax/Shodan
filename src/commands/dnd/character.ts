@@ -66,6 +66,7 @@ const characterCommand: Command = {
           { name: 'Name', value: 'name' }, { name: 'Class', value: 'class' },
           { name: 'Species / race', value: 'species' }, { name: 'Background', value: 'background' },
           { name: 'Level', value: 'level' }, { name: 'Armor class', value: 'armor_class' },
+          { name: 'Dexterity score', value: 'dexterity' }, { name: 'Dexterity modifier', value: 'dexterity_modifier' },
           { name: 'Current hit points', value: 'hp_current' }, { name: 'Maximum hit points', value: 'hp_max' }
         ))
       .addStringOption(option => option.setName('value').setDescription('The new value for this field.').setRequired(true).setMaxLength(100))),
@@ -212,10 +213,19 @@ const characterCommand: Command = {
       if (action === 'change') {
         const field = interaction.options.getString('field', true);
         const value = interaction.options.getString('value', true).trim();
-        const numericFields = new Set(['level', 'armor_class', 'hp_current', 'hp_max']);
+        const numericFields = new Set(['level', 'armor_class', 'dexterity', 'dexterity_modifier', 'hp_current', 'hp_max']);
         const parsedValue: string | number = numericFields.has(field) ? Number(value) : value;
-        if (typeof parsedValue === 'number' && (!Number.isInteger(parsedValue) || parsedValue < 0 || parsedValue > 10000)) {
+        if (typeof parsedValue === 'number' && (!Number.isInteger(parsedValue) ||
+          (field !== 'dexterity_modifier' && parsedValue < 0) || parsedValue > 10000)) {
           await interaction.editReply('That field needs a whole number between 0 and 10,000.');
+          return;
+        }
+        if (field === 'dexterity' && (Number(parsedValue) < 1 || Number(parsedValue) > 30)) {
+          await interaction.editReply('Dexterity score must be between 1 and 30.');
+          return;
+        }
+        if (field === 'dexterity_modifier' && (Number(parsedValue) < -10 || Number(parsedValue) > 20)) {
+          await interaction.editReply('Dexterity modifier must be between -10 and 20.');
           return;
         }
         const fields = character.sheetData && typeof character.sheetData === 'object' && !Array.isArray(character.sheetData)

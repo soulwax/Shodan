@@ -20,7 +20,7 @@ const descriptions: Record<string, string> = {
   dice: 'Roll several random values within a range.',
   divine: 'Draw a tarot card and get a reading.',
   echo: 'Repeat a message.',
-  encounter: 'Use `start`, `add`, `next`, `status`, `damage`, `heal`, `remove`, `twist`, or `end` to run a fight.',
+  encounter: 'Start with `start`; players use `join` to roll from their saved Dexterity and enter initiative. Use `add` for foes, then `next`, `status`, `damage`, `heal`, `remove`, `twist`, or `end`.',
   example: 'Show a sample embed.',
   fortune: 'Get a lighthearted fortune.',
   help: 'Show this command guide.',
@@ -35,7 +35,7 @@ const descriptions: Record<string, string> = {
   roll: 'Roll dice using notation such as `2d6`.',
   roast: 'Ask for a playful roast.',
   ship: 'Get a playful compatibility read for two names.',
-  story: 'Use `add`, `recent`, `search`, or `recap` to manage the shared campaign journal.',
+  story: 'Use `add`, `recent`, `search`, `show`, `edit`, `delete`, `ask`, `interpret`, `big-picture`, or `recap` for the typed journal and connected campaign memory.',
   store: 'Deposit coins, for example `coins:20sp 10gp 5e`.',
   withdraw: 'Withdraw coins using the same notation as `/store`.'
 };

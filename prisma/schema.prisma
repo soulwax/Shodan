@@ -99,6 +99,8 @@ model DndCampaign {
   characters   DndCharacter[]
   storyTidbits DndStoryTidbit[]
   encounters   DndEncounter[]
+  storyBigPicture String?      @db.Text
+  storyBigPictureUpdatedAt DateTime?
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
@@ -125,11 +127,23 @@ model DndStoryTidbit {
   id            String      @id @default(uuid())
   campaignId    String
   discordUserId String
+  kind          DndStoryKind @default(EVENT)
   content       String      @db.Text
+  interpretation String?    @db.Text
+  interpretedAt DateTime?
   campaign      DndCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   createdAt     DateTime    @default(now())
 
   @@index([campaignId, createdAt])
+}
+
+enum DndStoryKind {
+  EVENT
+  NPC
+  LOCATION
+  CLUE
+  QUEST
+  LORE
 }
 
 model DndEncounter {

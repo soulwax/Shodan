@@ -2,8 +2,8 @@ import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from '
 import { randomInt } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { getAIService } from '../../services/ai';
-import { getMainCampaign, getRecentStory } from '../../services/dnd-context';
-import { combatantId, EncounterCombatant, formatCombatant, orderedCombatants, readCombatants, toJson } from '../../services/dnd-encounter';
+import { createCampaignStoryEntry, getMainCampaign, getRecentStory, interpretCampaignStoryEntry } from '../../services/dnd-context';
+import { combatantId, dexterityModifier, EncounterCombatant, formatCombatant, orderedCombatants, readCombatants, toJson } from '../../services/dnd-encounter';
 import { prisma } from '../../services/prisma';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
@@ -46,7 +46,7 @@ function renderStatus(encounter: { title: string; scene: string | null; round: n
   const combatants = orderedCombatants(readCombatants(encounter.turnOrder));
   const lines = combatants.length
     ? combatants.map((combatant, index) => `${index === encounter.currentTurnIndex ? '▶️ ' : ''}${index + 1}. ${formatCombatant(combatant)}`)
-    : ['No combatants yet. Add someone with `/encounter add`.'];
+    : ['No combatants yet. Players can join with `/encounter join`; the DM can add foes with `/encounter add`.'];
   const embed = new EmbedBuilder()
     .setColor(0x8c5b32)
     .setTitle(`⚔️ ${encounter.title} · Round ${encounter.round}`)
@@ -91,6 +91,10 @@ const encounterCommand: Command = {
       .addStringOption(option => option.setName('kind').setDescription('Character or enemy').addChoices({ name: 'Character', value: 'character' }, { name: 'Enemy', value: 'enemy' }))
       .addIntegerOption(option => option.setName('hp').setDescription('Current hit points (optional)').setMinValue(0).setMaxValue(100000))
       .addIntegerOption(option => option.setName('max_hp').setDescription('Maximum hit points (provide with hp)').setMinValue(1).setMaxValue(100000)))
+    .addSubcommand(command => command
+      .setName('join')
+      .setDescription('Roll initiative for your saved character and join the active fight.')
+      .addIntegerOption(option => option.setName('bonus').setDescription('Use this Dexterity modifier if it is missing or different on your sheet.').setMinValue(-10).setMaxValue(20)))
     .addSubcommand(command => command.setName('next').setDescription('Advance to the next turn.'))
     .addSubcommand(command => command.setName('status').setDescription('Show the active encounter and initiative order.'))
     .addSubcommand(command => command
@@ -178,6 +182,52 @@ const encounterCommand: Command = {
         return;
       }
 
+      if (subcommand === 'join') {
+        const character = await prisma.dndCharacter.findUnique({
+          where: { campaignId_discordUserId: { campaignId: campaign.id, discordUserId: interaction.user.id } }
+        });
+        if (!character) {
+          await interaction.editReply('Your character is not saved for this server yet. Use `/character init` first, or ask the DM to add you with `/encounter add`.');
+          return;
+        }
+        const fields = character.sheetData && typeof character.sheetData === 'object' && !Array.isArray(character.sheetData)
+          ? character.sheetData as Record<string, unknown>
+          : {};
+        const override = interaction.options.getInteger('bonus');
+        const bonus = override ?? dexterityModifier(fields);
+        if (bonus === null) {
+          await interaction.editReply('I couldn’t find your Dexterity modifier on the saved sheet. Add `dexterity` with `/character change`, or use `/encounter join bonus:<modifier>`.');
+          return;
+        }
+        const name = character.characterName || (typeof fields.name === 'string' ? fields.name : '') || interaction.user.displayName;
+        const die = randomInt(1, 21);
+        const initiative = die + bonus;
+        const hpValue = Number(fields.hp_current);
+        const maxHpValue = Number(fields.hp_max);
+        const hp = Number.isInteger(hpValue) && hpValue >= 0 ? hpValue : null;
+        const maxHp = Number.isInteger(maxHpValue) && maxHpValue > 0 ? maxHpValue : null;
+        const encounter = await updateActiveEncounter(campaign.id, (active, combatants) => {
+          if (combatants.length >= MAX_COMBATANTS) throw new Error(`This encounter is at its ${MAX_COMBATANTS}-combatant limit.`);
+          if (combatants.some(combatant => combatant.discordUserId === interaction.user.id)) throw new Error('You are already in this encounter.');
+          if (combatants.some(combatant => combatant.name.toLowerCase() === name.toLowerCase())) throw new Error(`**${name}** is already in this encounter.`);
+          const currentId = combatants[active.currentTurnIndex]?.id;
+          const updatedOrder = orderedCombatants([...combatants, {
+            id: combatantId(), name, initiative, kind: 'character', hp, maxHp, discordUserId: interaction.user.id
+          }]);
+          const currentTurnIndex = currentId ? updatedOrder.findIndex(combatant => combatant.id === currentId) : -1;
+          return { turnOrder: toJson(updatedOrder), currentTurnIndex };
+        });
+        if (!encounter) {
+          await interaction.editReply('There’s no active encounter. The DM can start one with `/encounter start`.');
+          return;
+        }
+        await interaction.editReply({
+          content: `🎲 **${name}** rolled ${die} ${bonus >= 0 ? '+' : '−'} ${Math.abs(bonus)} = **${initiative}** initiative. You’re in!`,
+          embeds: [renderStatus(encounter)]
+        });
+        return;
+      }
+
       if (subcommand === 'next') {
         const encounter = await updateActiveEncounter(campaign.id, (active, combatants) => {
           if (combatants.length === 0) throw new Error('Add at least one combatant before advancing initiative.');
@@ -262,8 +312,11 @@ const encounterCommand: Command = {
         ], { temperature: 0.9, max_tokens: 220 });
         if (!result?.trim()) throw new Error('AI returned an empty encounter twist');
         const twist = result.trim().slice(0, 900);
-        await prisma.dndStoryTidbit.create({
-          data: { campaignId: campaign.id, discordUserId: interaction.user.id, content: `Encounter twist (${encounter.title}): ${twist}` }
+        await createCampaignStoryEntry({
+          campaignId: campaign.id,
+          discordUserId: interaction.user.id,
+          kind: 'EVENT',
+          content: `Encounter twist (${encounter.title}): ${twist}`
         });
         await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x8c5b32).setTitle('🌀 A turn in the fight').setDescription(twist).setFooter({ text: 'Saved to the campaign journal.' })] });
         return;
@@ -293,6 +346,8 @@ const encounterCommand: Command = {
         } catch {
           recap = `The encounter “${encounter.title}” ended after round ${encounter.round}. Tracked remaining HP: ${combatants.map(combatant => `${combatant.name} ${combatant.hp ?? 'untracked'}`).join(', ') || 'none'}.`;
         }
+        const recapEntry = `Encounter recap (${encounter.title}): ${recap}`;
+        const interpretation = await interpretCampaignStoryEntry(campaign.id, 'EVENT', recapEntry);
         await prisma.$transaction(async transaction => {
           const changed = await transaction.dndEncounter.updateMany({
             where: { id: encounter.id, revision: encounter.revision, isActive: true },
@@ -300,14 +355,25 @@ const encounterCommand: Command = {
           });
           if (!changed.count) throw new Error('Encounter changed while it was being ended. Please try again.');
           await transaction.dndStoryTidbit.create({
-            data: { campaignId: campaign.id, discordUserId: interaction.user.id, content: `Encounter recap (${encounter.title}): ${recap}` }
+            data: {
+              campaignId: campaign.id,
+              discordUserId: interaction.user.id,
+              kind: 'EVENT',
+              content: recapEntry,
+              interpretation,
+              interpretedAt: interpretation ? new Date() : null
+            }
+          });
+          await transaction.dndCampaign.update({
+            where: { id: campaign.id },
+            data: { storyBigPicture: null, storyBigPictureUpdatedAt: null }
           });
         });
         await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x61745a).setTitle('📖 Encounter recorded').setDescription(recap).setFooter({ text: 'Saved to the campaign journal.' })] });
       }
     } catch (error) {
       logger.error(`[D&D] Encounter ${subcommand} failed:`, error);
-      await interaction.editReply(error instanceof Error && (error.message.startsWith('There') || error.message.startsWith('This') || error.message.startsWith('I couldn’t') || error.message.startsWith('No HP') || error.message.startsWith('Encounter changed') || error.message.startsWith('Add at least'))
+      await interaction.editReply(error instanceof Error && (error.message.startsWith('There') || error.message.startsWith('This') || error.message.startsWith('I couldn’t') || error.message.startsWith('No HP') || error.message.startsWith('Encounter changed') || error.message.startsWith('Add at least') || error.message.startsWith('You are') || error.message.startsWith('**'))
         ? error.message
         : 'I couldn’t update the encounter right now. Please try again.');
     }

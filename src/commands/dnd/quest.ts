@@ -4,8 +4,7 @@ import {
   SlashCommandBuilder
 } from 'discord.js'
 import { getAIService } from '../../services/ai'
-import { getMainCampaign, getRecentStory } from '../../services/dnd-context'
-import { prisma } from '../../services/prisma'
+import { createCampaignStoryEntry, getMainCampaign, getRecentStory } from '../../services/dnd-context'
 import { Command } from '../../types/command'
 import { logger } from '../../utils/logger'
 
@@ -64,12 +63,11 @@ const questCommand: Command = {
       const quest = result.trim().slice(0, 1800)
       const save = interaction.options.getBoolean('save') === true
       if (save) {
-        await prisma.dndStoryTidbit.create({
-          data: {
+        await createCampaignStoryEntry({
             campaignId: campaign.id,
             discordUserId: interaction.user.id,
-            content: `Quest: ${quest.slice(0, 950)}`
-          }
+            kind: 'QUEST',
+            content: quest.slice(0, 950)
         })
       }
       const embed = new EmbedBuilder()

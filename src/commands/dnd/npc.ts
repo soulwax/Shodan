@@ -1,7 +1,6 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getAIService } from '../../services/ai';
-import { getMainCampaign, getRecentStory } from '../../services/dnd-context';
-import { prisma } from '../../services/prisma';
+import { createCampaignStoryEntry, getMainCampaign, getRecentStory } from '../../services/dnd-context';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
 
@@ -38,8 +37,11 @@ const npcCommand: Command = {
       const npc = result.trim().slice(0, 1700);
       const save = interaction.options.getBoolean('save') === true;
       if (save) {
-        await prisma.dndStoryTidbit.create({
-          data: { campaignId: campaign.id, discordUserId: interaction.user.id, content: `NPC: ${npc.slice(0, 990)}` }
+        await createCampaignStoryEntry({
+          campaignId: campaign.id,
+          discordUserId: interaction.user.id,
+          kind: 'NPC',
+          content: npc.slice(0, 990)
         });
       }
       const embed = new EmbedBuilder()

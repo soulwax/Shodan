@@ -7,8 +7,8 @@ Shodan is a Discord bot for D&D campaign support, AI assisted prompts, tarot rea
 ### D&D campaign tools
 
 - **Characters:** import a searchable PDF with `/character init`, read the saved sheet, ask AI questions, keep character memories, edit fields, and track HP with `/character hp`.
-- **Campaign journal:** add, search, and revisit shared notes with `/story`; use `/story recap` for an AI summary grounded in the journal.
-- **Encounter tracker:** `/encounter start` creates an AI written scene; `/encounter add` rolls a d20 automatically or accepts a manual initiative result. Advance turns, track HP, apply damage or healing, get a campaign aware twist, and save an AI recap when the encounter ends.
+- **Campaign journal:** add typed notes, browse pages, search, show, edit, and delete entries with `/story`. `/story ask` answers from cited journal evidence. `/story interpret` creates a compact AI memory for older notes; `/story big-picture` combines and stores those memories as the campaign overview, which D&D AI commands reuse to stay consistent and reduce repeated context. New, edited, or deleted notes mark the overview stale; rebuild it with `/story big-picture`.
+- **Encounter tracker:** `/encounter start` creates an AI written scene; players use `/encounter join` to roll a d20 with their saved Dexterity modifier and enter the initiative order. DMs use `/encounter add` for foes, then advance turns, track HP, get a campaign aware twist, and save an AI recap when the encounter ends.
 - **Campaign ideas:** `/quest` and `/npc` generate material from recent journal notes. Set `save:true` to keep it in the journal.
 - **Adventurer bank:** `/store coins:20sp 10gp 5e` and `/withdraw coins:20sp 10gp 5e` support copper (`cp`), silver (`sp`), gold (`gp`), electrum (`e`), and platinum (`pc`). Repeated denominations are combined. `/balance` shows all five balances.
 - **Character reset:** `/purge-char` removes your saved character and notes from this server's campaign.
@@ -87,7 +87,7 @@ Slash commands are registered when the bot starts. For local development, use `p
 
 ## Data and campaign scope
 
-D&D records are separated by Discord server and use that server's Main Campaign. Character sheets and memories belong to an individual Discord user; the story journal and encounter history are shared with the campaign. Wallet balances are per user and campaign, and deposits and withdrawals are recorded in the database ledger.
+D&D records are separated by Discord server and use that server's Main Campaign. Character sheets and memories belong to an individual Discord user; the story journal and encounter history are shared with the campaign. Journal entries keep their source text and a stored AI interpretation. After note changes, run `/story big-picture` to refresh the shared overview; quest, NPC, and encounter prompts reuse it until the next journal change. Wallet balances are per user and campaign, and deposits and withdrawals are recorded in the database ledger.
 
 Keep `.env` private and never commit API keys or bot credentials.
 
