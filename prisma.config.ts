@@ -20,8 +20,22 @@
 // Prisma v7 does NOT auto-load .env files when using config files
 
 import path from 'node:path'
-import { defineConfig, env } from 'prisma/config'
+import { defineConfig } from 'prisma/config'
 import 'dotenv/config' // Load .env variables (required for Prisma v7 with config files)
+
+const configuredDatabaseUrl = process.env.DATABASE_URL_UNPOOLED
+  || process.env.DATABASE_URL
+  || process.env.POSTGRES_PRISMA_URL
+
+if (!configuredDatabaseUrl) {
+  throw new Error('Set DATABASE_URL_UNPOOLED or DATABASE_URL before running Prisma commands.')
+}
+
+const migrationDatabaseUrl = new URL(configuredDatabaseUrl)
+if (!migrationDatabaseUrl.searchParams.has('connect_timeout')) {
+  // Neon may need extra time to wake a compute endpoint from scale-to-zero.
+  migrationDatabaseUrl.searchParams.set('connect_timeout', '30')
+}
 
 /**
  * Prisma v7 configuration for PostgreSQL
@@ -39,7 +53,7 @@ export default defineConfig({
   },
   datasource: {
     // Migrations need a direct database connection; runtime uses DATABASE_URL.
-    url: env('DATABASE_URL_UNPOOLED') || env('DATABASE_URL') || env('POSTGRES_PRISMA_URL'),
+    url: migrationDatabaseUrl.toString(),
     // Optional: shadow database for safe schema drift detection
     // shadowDatabaseUrl: env('DATABASE_URL_UNPOOLED'),
   },
