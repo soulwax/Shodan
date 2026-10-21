@@ -46,7 +46,7 @@ function meannessInstruction(level: number): string {
     2: 'Use dry, friendly humor with a little teasing, while clearly staying on the person’s side.',
     3: 'Make the wit sharper and the teasing more noticeable, but keep it playful and useful.',
     4: 'Use spicy, pointed banter and a stronger comic bite, while remaining supportive rather than cruel.',
-    5: 'Use the sharpest playful roast style: bold, irreverent, and funny, but never genuinely cruel.'
+    5: 'Deliver a scathing, theatrical roast of the situation and the choices explicitly described in the question. Make the wit ruthless and punchy, but keep it clearly comedic; do not invent personal details or attack the person’s identity, appearance, vulnerabilities, or worth. Make them feel miserable but add a slight wink of encouragement.'
   }
   return instructions[level] ?? instructions[DEFAULT_DIVINE_MEANNESS]
 }

@@ -64,7 +64,7 @@ const aiSettingsCommand: Command = {
       .setDescription('Set the default playful snark level for non-wholesome /divine readings.')
       .addIntegerOption(option => option
         .setName('level')
-        .setDescription('1 is gentle; 5 is the sharpest playful setting. Default: 2.')
+        .setDescription('1 is gentle; 5 is a scathing roast of the situation. Default: 2.')
         .setRequired(true)
         .setMinValue(1)
         .setMaxValue(5)))
