@@ -1,0 +1,58 @@
+import { AttachmentBuilder, ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import { getAIService } from '../../services/ai';
+import { Command } from '../../types/command';
+import { logger } from '../../utils/logger';
+
+const speakCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('speak')
+    .setDescription('Turn a prompt into a short, AI-spoken audio clip.')
+    .addStringOption(option =>
+      option.setName('prompt')
+        .setDescription('What should the generated voice say?')
+        .setRequired(true)
+        .setMaxLength(500)
+    )
+    .addStringOption(option =>
+      option.setName('voice')
+        .setDescription('Choose a generated voice')
+        .setRequired(false)
+        .addChoices(
+          { name: 'Alloy', value: 'alloy' },
+          { name: 'Coral', value: 'coral' },
+          { name: 'Nova', value: 'nova' },
+          { name: 'Onyx', value: 'onyx' }
+        )
+    ),
+  category: 'fun',
+  cooldown: 45,
+
+  async execute(interaction: ChatInputCommandInteraction) {
+    await interaction.deferReply();
+    const prompt = interaction.options.getString('prompt', true);
+    const voice = interaction.options.getString('voice') ?? 'coral';
+
+    try {
+      const ai = getAIService();
+      const spokenText = await ai.createOpenAICompletion([
+        {
+          role: 'system',
+          content: 'Write a short spoken line based on the user request. Return only the words to be spoken, with no stage directions, labels, or quotation marks. Keep it under 350 characters.'
+        },
+        { role: 'user', content: prompt }
+      ], { guildId: interaction.guildId, max_tokens: 180 });
+
+      if (!spokenText?.trim()) throw new Error('Luna returned an empty spoken line');
+      const audio = await ai.generateSpeech(spokenText.trim(), voice);
+      await interaction.editReply({
+        content: `AI-generated speech (${voice}): “${spokenText.trim()}”`,
+        files: [new AttachmentBuilder(audio, { name: 'generated-speech.mp3' })]
+      });
+    } catch (error) {
+      logger.error('[Speak] Failed to generate speech:', error);
+      await interaction.editReply('I couldn’t generate that audio. Check that OpenAI is configured and try again.');
+    }
+  }
+};
+
+export default speakCommand;

@@ -24,6 +24,7 @@ const descriptions: Record<string, string> = {
   example: 'Show a sample embed.',
   fortune: 'Get a lighthearted fortune.',
   help: 'Show this command guide.',
+  image: 'Generate an image from a prompt using Luna and OpenAI image generation.',
   join: 'Join your current voice channel (no music playback).',
   members: 'List members of this server.',
   npc: 'Generate a campaign aware NPC; `save:true` adds it to the journal.',
@@ -34,6 +35,7 @@ const descriptions: Record<string, string> = {
   roll: 'Roll dice using notation such as `2d6`.',
   roast: 'Ask for a playful roast.',
   ship: 'Get a playful compatibility read for two names.',
+  speak: 'Generate a short spoken audio clip from a prompt.',
   story: 'Use `add`, `recent`, `search`, `show`, `edit`, `delete`, `ask`, `interpret`, `big-picture`, or `recap` for the typed journal and connected campaign memory.',
   store: 'Deposit coins, for example `coins:20sp 10gp 5e`.',
   withdraw: 'Withdraw coins using the same notation as `/store`.'
@@ -43,7 +45,7 @@ const groups: Array<{ name: string; commands: string[] }> = [
   { name: '🧭 D&D · Character & journal', commands: ['character', 'purge-char', 'story'] },
   { name: '⚔️ D&D · Encounters & bank', commands: ['encounter', 'quest', 'npc', 'store', 'withdraw', 'balance'] },
   { name: '🔮 Tarot', commands: ['divine'] },
-  { name: '🎲 Fun & AI', commands: ['roll', 'dice', 'coinflip', 'describe', 'roast', 'compliment', 'fortune', 'ship'] },
+  { name: '🎲 Fun & AI', commands: ['roll', 'dice', 'coinflip', 'describe', 'image', 'speak', 'roast', 'compliment', 'fortune', 'ship'] },
   { name: '🛠️ Server utilities', commands: ['avatar', 'echo', 'ping', 'join', 'help', 'example'] },
   { name: '🛡️ Moderation', commands: ['purge', 'banned', 'members'] }
 ];

@@ -91,15 +91,16 @@ async function providerHttpError(provider: string, response: Response): Promise<
 async function fetchWithProviderTimeout(
   provider: string,
   input: string | URL,
-  init?: RequestInit
+  init?: RequestInit,
+  timeoutMs = PROVIDER_REQUEST_TIMEOUT_MS
 ): Promise<Response> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), PROVIDER_REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(input, { ...init, signal: controller.signal });
   } catch (error) {
     if (controller.signal.aborted) {
-      throw new Error(`${provider} request timed out after ${PROVIDER_REQUEST_TIMEOUT_MS / 1000} seconds`);
+      throw new Error(`${provider} request timed out after ${timeoutMs / 1000} seconds`);
     }
     throw error;
   } finally {
@@ -145,6 +146,92 @@ export class AIService {
     return this.withProviderFallback(provider =>
       this.generateText(provider, requestMessages, { ...resolvedOptions, temperature, max_tokens })
     );
+  }
+
+  async createOpenAICompletion(messages: ChatMessage[], options: GenerationOptions = {}): Promise<string | null> {
+    if (!this.apiKeys.openai) throw new Error('OPENAI_API_KEY is required for Luna media prompt generation');
+
+    const resolvedOptions = await this.resolveGenerationOptions({ ...options, model: 'gpt-6-luna' });
+    const { temperature = 1.0, max_tokens = 500 } = resolvedOptions;
+    return this.withProviderRetries('openai', () =>
+      this.enqueueProviderRequest('openai', () =>
+        this.generateOpenAICompatible('openai', messages, {
+          ...resolvedOptions,
+          model: 'gpt-6-luna',
+          temperature,
+          max_tokens
+        })
+      )
+    );
+  }
+
+  async generateImage(prompt: string): Promise<Buffer> {
+    if (!this.apiKeys.openai) throw new Error('OPENAI_API_KEY is required for image generation');
+
+    const imageBase64 = await this.withProviderRetries('openai', () =>
+      this.enqueueProviderRequest('openai', async () => {
+        const response = await fetchWithProviderTimeout(
+          'OpenAI image generation',
+          'https://api.openai.com/v1/images/generations',
+          {
+            method: 'POST',
+            headers: {
+              authorization: `Bearer ${this.apiKeys.openai}`,
+              'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: 'gpt-image-2.5-flare',
+              prompt,
+              size: '1024x1024',
+              quality: 'medium',
+              output_format: 'png'
+            })
+          },
+          120_000
+        );
+        if (!response.ok) throw await providerHttpError('OpenAI image generation', response);
+        const result = await response.json() as { data?: Array<{ b64_json?: string }> };
+        const image = result.data?.[0]?.b64_json;
+        if (!image) throw new Error('OpenAI returned no image data');
+        return image;
+      })
+    );
+
+    if (!imageBase64) throw new Error('OpenAI image generation returned an empty result');
+    return Buffer.from(imageBase64, 'base64');
+  }
+
+  async generateSpeech(input: string, voice: string): Promise<Buffer> {
+    if (!this.apiKeys.openai) throw new Error('OPENAI_API_KEY is required for speech generation');
+
+    const audioBase64 = await this.withProviderRetries('openai', () =>
+      this.enqueueProviderRequest('openai', async () => {
+        const response = await fetchWithProviderTimeout(
+          'OpenAI speech generation',
+          'https://api.openai.com/v1/audio/speech',
+          {
+            method: 'POST',
+            headers: {
+              authorization: `Bearer ${this.apiKeys.openai}`,
+              'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini-tts',
+              voice,
+              input,
+              instructions: 'Speak clearly and naturally, with a friendly conversational tone.',
+              response_format: 'mp3'
+            })
+          },
+          60_000
+        );
+        if (!response.ok) throw await providerHttpError('OpenAI speech generation', response);
+        return Buffer.from(await response.arrayBuffer()).toString('base64');
+      })
+    );
+
+    if (!audioBase64) throw new Error('OpenAI speech generation returned an empty result');
+    return Buffer.from(audioBase64, 'base64');
   }
 
   async createVisionCompletion(

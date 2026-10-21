@@ -17,6 +17,7 @@ Shodan is a Discord bot for D&D campaign support, AI assisted prompts, tarot rea
 
 - `/divine` draws a tarot card and offers a reading. Tarot readings are delivered in the moment and are not stored against a user.
 - `/describe` gives an uploaded image a short narration in a chosen style. To use an image already posted in chat, right-click the post and choose **Apps → Describe image**.
+- `/image` uses Luna to refine an image prompt, then generates an image with OpenAI's `gpt-image-2.5-flare`. `/speak` uses Luna to write a short line and OpenAI text-to-speech to create an MP3 voice clip.
 - `/roast`, `/compliment`, `/fortune`, and `/ship` create playful AI responses.
 - `/style learn` lets users opt in by submitting their own writing sample; `/style show` displays their profile and `/style forget` deletes it. Samples are analyzed in the bot process and discarded; only aggregate writing-pattern statistics are stored per user and server.
 - `/ai-settings` lets server managers set AI temperature, maximum output tokens, and OpenAI reasoning effort for that server.
@@ -54,13 +55,15 @@ CF_TOKEN=
 CF_ACCOUNT_ID=
 ```
 
-The bot requires `BOT_TOKEN`, `CLIENT_ID`, and `DATABASE_URL` to start. AI credentials are optional for non-AI commands. If multiple providers are configured, Shodan tries Gemini, OpenAI, Cloudflare Workers AI, Grok, then Anthropic, moving to the next configured provider when one fails. Cloudflare requires both `CF_TOKEN` and `CF_ACCOUNT_ID`; it uses Workers AI for text fallback and a vision model for image requests.
+The bot requires `BOT_TOKEN`, `CLIENT_ID`, and `DATABASE_URL` to start. AI credentials are optional for non-AI commands. `/image` and `/speak` require `OPENAI_API_KEY`; other AI commands can use configured providers, tried in this order: Gemini, OpenAI, Cloudflare Workers AI, Grok, then Anthropic. Cloudflare requires both `CF_TOKEN` and `CF_ACCOUNT_ID`; it uses Workers AI for text fallback and a vision model for image requests.
 
 OpenAI uses `gpt-6-luna`. AI generation defaults are stored per Discord server: temperature defaults to `1.0`, output tokens keep each command’s own limit unless a server-wide limit is set, and OpenAI reasoning effort defaults to `low`. OpenAI GPT-6 only accepts a temperature value when reasoning effort is `none`, so Shodan omits temperature from OpenAI requests at other reasoning levels; the temperature setting still applies to Gemini and Cloudflare.
 
 AI requests are rate-limited per provider to 10 per minute by default, with at most two running at once and a bounded waiting queue. Set `AI_REQUESTS_PER_MINUTE` to a value from 1 to 60 to adjust the per-provider cap. Temporary HTTP 429 and 5xx responses honor `Retry-After` and receive up to two retries.
 
 AI features send the content needed for the request to the configured AI provider. Depending on the command, this can include a question, campaign journal notes, character sheet text, or an uploaded image.
+
+`/speak` sends the prompt to Luna and the resulting text to OpenAI's text-to-speech API. Its current `gpt-4o-mini-tts` model is scheduled for shutdown on January 6, 2027; migrate the speech implementation to OpenAI's Realtime API before then.
 
 Writing-style profiles are separate from message history and remain opt-in and server-specific. `/style learn` computes aggregate sentence, word, punctuation, contraction, and emoji statistics from the sample a user submits; the raw sample is not stored. Profiles remain in PostgreSQL until `/style forget` is used. A compact description of those statistics may be sent to the configured AI provider with that user's later requests so it can shape the response style.
 
