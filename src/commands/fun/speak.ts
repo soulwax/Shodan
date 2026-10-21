@@ -3,6 +3,20 @@ import { getAIService } from '../../services/ai';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
 
+function makeAudioFilename(title: string): string {
+  const slug = title
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48)
+    .replace(/-+$/g, '');
+
+  if (!slug) throw new Error('Luna returned a title that cannot be used as a filename');
+  return `${slug}.mp3`;
+}
+
 const speakCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('speak')
@@ -43,10 +57,18 @@ const speakCommand: Command = {
       ], { guildId: interaction.guildId, max_tokens: 180 });
 
       if (!spokenText?.trim()) throw new Error('Luna returned an empty spoken line');
+      const audioTitle = await ai.createOpenAICompletion([
+        {
+          role: 'system',
+          content: 'Create a short, funny title for an audio filename that describes the overall situation in the user request, not just the exact spoken line. Use 2 to 5 words. Return only the title, with no quotes, punctuation, or file extension.'
+        },
+        { role: 'user', content: prompt }
+      ], { guildId: interaction.guildId, max_tokens: 40 });
+
+      if (!audioTitle?.trim()) throw new Error('Luna returned an empty audio filename title');
       const audio = await ai.generateSpeech(spokenText.trim(), voice);
       await interaction.editReply({
-        content: `AI-generated speech (${voice}): “${spokenText.trim()}”`,
-        files: [new AttachmentBuilder(audio, { name: 'generated-speech.mp3' })]
+        files: [new AttachmentBuilder(audio, { name: makeAudioFilename(audioTitle.trim()) })]
       });
     } catch (error) {
       logger.error('[Speak] Failed to generate speech:', error);
