@@ -30,6 +30,7 @@ export function setupDiscordClient() {
       GatewayIntentBits.Guilds,
       // Privileged — enable in Discord Developer Portal → Bot → Privileged Gateway Intents
       GatewayIntentBits.GuildMembers,
+      GatewayIntentBits.MessageContent,
       GatewayIntentBits.GuildVoiceStates,
       GatewayIntentBits.GuildModeration,
     ]

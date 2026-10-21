@@ -29,7 +29,7 @@ import { logger } from '../utils/logger';
 export function registerEvents(client: Client): void {
   logger.info('Registering events...');
   
-  const eventFolders = ['guild', 'interaction', 'voice'];
+  const eventFolders = ['guild', 'interaction'];
   
   for (const folder of eventFolders) {
     const folderPath = path.join(__dirname, '../events', folder);
@@ -41,7 +41,7 @@ export function registerEvents(client: Client): void {
     }
     
     const eventFiles = fs.readdirSync(folderPath)
-      .filter(file => file.endsWith('.ts') || file.endsWith('.js'));
+      .filter(file => (file.endsWith('.ts') && !file.endsWith('.d.ts')) || file.endsWith('.js'));
     
     for (const file of eventFiles) {
       try {

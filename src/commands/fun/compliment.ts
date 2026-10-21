@@ -65,7 +65,8 @@ const complimentCommand: Command = {
       const ai = getAIService();
       const compliment = await ai.createVisionCompletion(systemPrompt, textPrompt, avatarUrl, {
         temperature: 0.9,
-        max_tokens: 200
+        max_tokens: 200,
+        guildId: interaction.guildId
       });
 
       if (!compliment?.trim()) throw new Error('Empty AI response');

@@ -180,7 +180,8 @@ ${readingContext}`
         [{ role: 'user', content: prompt }],
         {
           temperature: temperature,
-          max_tokens: maxTokens
+          max_tokens: maxTokens,
+          guildId: interaction.guildId
         }
       )
       logger.info('[Divine] Received AI interpretation')

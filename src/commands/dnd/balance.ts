@@ -16,7 +16,7 @@ import { logger } from '../../utils/logger';
 
 const currencies = [DndCurrency.CP, DndCurrency.SP, DndCurrency.GP, DndCurrency.EL, DndCurrency.PC];
 
-async function narrateVault(entries: string[]): Promise<string> {
+async function narrateVault(entries: string[], guildId: string): Promise<string> {
   try {
     const response = await getAIService().createChatCompletion([
       {
@@ -24,7 +24,7 @@ async function narrateVault(entries: string[]): Promise<string> {
         content: 'You are a fantasy bankkeeper giving a quick, warm update about an adventurer’s vault. In one short line, describe its feel based on the mix of coins. Be playful and grounded, not grandiose. Do not repeat the amounts or suggest the money has changed. No markdown. Under 20 words.'
       },
       { role: 'user', content: `The vault contains ${entries.join(', ')}. Give the bankkeeper’s one-line observation.` }
-    ], { temperature: 0.8, max_tokens: 60 });
+    ], { temperature: 0.8, max_tokens: 60, guildId });
     return response?.trim().slice(0, 250) || 'The ledger is up to date.';
   } catch {
     logger.warn('[D&D] AI balance narration unavailable; using the standard line.');
@@ -57,7 +57,7 @@ const balanceCommand: Command = {
       const entries = balances.map(({ currency, amount }) => `${formatCoins(amount)} ${CURRENCIES[currency].label}`);
       const narration = !server.aiNarrationEnabled
         ? 'Your coins are right where you left them.'
-        : await narrateVault(entries);
+        : await narrateVault(entries, guild.id);
       const embed = new EmbedBuilder()
         .setColor(0xd4af37)
         .setTitle('🏦 Your adventurer vault')

@@ -58,7 +58,7 @@ const questCommand: Command = {
             content: `Campaign journal facts:\n${story.length ? story.map((entry, index) => `${index + 1}. ${entry}`).join('\n') : '(No journal notes yet.)'}\n\nStarting idea: ${idea}`
           }
         ],
-        { temperature: 0.85, max_tokens: 420 }
+        { temperature: 0.85, max_tokens: 420, guildId: interaction.guildId }
       )
       if (!result?.trim()) throw new Error('AI returned an empty quest')
       const quest = result.trim().slice(0, 1800)

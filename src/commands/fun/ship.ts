@@ -93,7 +93,8 @@ The playful compatibility score is ${score}/100. ${nameA}'s avatar is attached, 
       const ai = getAIService();
       const commentary = await ai.createVisionCompletion(systemPrompt, textPrompt, avatarA, {
         temperature: 0.95,
-        max_tokens: 180
+        max_tokens: 180,
+        guildId: interaction.guildId
       });
 
       if (!commentary) throw new Error('Empty response');

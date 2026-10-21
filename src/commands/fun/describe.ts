@@ -17,7 +17,7 @@ const styles = {
   cozy: 'A friend describing the scene over a warm drink: relaxed, specific, and kind.'
 } as const;
 
-export async function narrateImage(imageUrl: string, style: keyof typeof styles | null): Promise<string> {
+export async function narrateImage(imageUrl: string, style: keyof typeof styles | null, guildId?: string | null): Promise<string> {
   const voice = style ? styles[style] : 'A quick-witted friend noticing the details everyone else missed.';
   const systemPrompt = `You are a funny, perceptive person narrating an image for a friend. ${voice}
 
@@ -27,7 +27,7 @@ Write 2–4 natural sentences. Point out concrete things that are actually visib
     systemPrompt,
     textPrompt,
     imageUrl,
-    { temperature: 0.95, max_tokens: 220 }
+    { temperature: 0.95, max_tokens: 220, guildId }
   );
   if (!narration?.trim()) throw new Error('Empty AI response');
   return narration.trim();
@@ -75,7 +75,7 @@ const describeCommand: Command = {
     }
     const style = interaction.options.getString('style') as keyof typeof styles | null;
     try {
-      const narration = await narrateImage(image.url, style);
+      const narration = await narrateImage(image.url, style, interaction.guildId);
       await interaction.editReply({ embeds: [narrationEmbed(narration, image.url)] });
     } catch (error) {
       logger.error('[Describe] Failed to narrate image:', error);

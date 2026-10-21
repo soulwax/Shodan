@@ -33,7 +33,7 @@ const npcCommand: Command = {
           role: 'user',
           content: `Campaign journal facts:\n${story.length ? story.map((entry, index) => `${index + 1}. ${entry}`).join('\n') : '(No journal notes yet.)'}\n\nNPC role: ${role}`
         }
-      ], { temperature: 0.9, max_tokens: 320 });
+      ], { temperature: 0.9, max_tokens: 320, guildId: interaction.guildId });
       if (!result?.trim()) throw new Error('AI returned an empty NPC');
       const npc = result.trim().slice(0, 1700);
       const save = interaction.options.getBoolean('save') === true;

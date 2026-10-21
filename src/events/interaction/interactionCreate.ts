@@ -21,6 +21,7 @@ import { Collection, Events, Interaction } from 'discord.js';
 import { ExtendedClient } from '../../types/client';
 import { Command, MessageContextCommand } from '../../types/command';
 import { Event } from '../../types/event';
+import { withAIRequestContext } from '../../services/ai-context';
 import { logger } from '../../utils/logger';
 
 // commandName -> userId -> expiry timestamp (ms)
@@ -68,22 +69,24 @@ const interactionCreateEvent: Event = {
       }, cooldownMs);
     }
 
-    try {
-      if (interaction.isChatInputCommand()) {
-        await (command as Command).execute(interaction, interaction.client);
-      } else {
-        await (command as MessageContextCommand).execute(interaction, interaction.client);
-      }
-    } catch (error) {
-      logger.error(`Error executing command ${interaction.commandName}:`, error);
+    await withAIRequestContext(interaction.guildId, interaction.user.id, async () => {
+      try {
+        if (interaction.isChatInputCommand()) {
+          await (command as Command).execute(interaction, interaction.client);
+        } else {
+          await (command as MessageContextCommand).execute(interaction, interaction.client);
+        }
+      } catch (error) {
+        logger.error(`Error executing command ${interaction.commandName}:`, error);
 
-      const errorMessage = 'There was an error while executing this command!';
-      if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ content: errorMessage, ephemeral: true });
-      } else {
-        await interaction.reply({ content: errorMessage, ephemeral: true });
+        const errorMessage = 'There was an error while executing this command!';
+        if (interaction.replied || interaction.deferred) {
+          await interaction.followUp({ content: errorMessage, ephemeral: true });
+        } else {
+          await interaction.reply({ content: errorMessage, ephemeral: true });
+        }
       }
-    }
+    });
   }
 };
 

@@ -43,7 +43,7 @@ const describeMessageCommand: MessageContextCommand = {
 
     await interaction.deferReply();
     try {
-      const narration = await narrateImage(image.url, null);
+      const narration = await narrateImage(image.url, null, interaction.guildId);
       await interaction.editReply({ embeds: [narrationEmbed(narration, image.url)] });
     } catch (error) {
       logger.error('[Describe] Failed to narrate a message image:', error);

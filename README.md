@@ -18,6 +18,8 @@ Shodan is a Discord bot for D&D campaign support, AI assisted prompts, tarot rea
 - `/divine` draws a tarot card and offers a reading. Tarot readings are delivered in the moment and are not stored against a user.
 - `/describe` gives an uploaded image a short narration in a chosen style. To use an image already posted in chat, right-click the post and choose **Apps → Describe image**.
 - `/roast`, `/compliment`, `/fortune`, and `/ship` create playful AI responses.
+- `/style learn` lets users opt in by submitting their own writing sample; `/style show` displays their profile and `/style forget` deletes it. Samples are analyzed in the bot process and discarded; only aggregate writing-pattern statistics are stored per user and server.
+- `/ai-settings` lets server managers set AI temperature, maximum output tokens, and OpenAI reasoning effort for that server.
 - `/roll`, `/dice`, and `/coinflip` handle tabletop and casual rolls.
 
 ### Server and utility commands
@@ -52,11 +54,15 @@ CF_TOKEN=
 CF_ACCOUNT_ID=
 ```
 
-The bot requires `BOT_TOKEN`, `CLIENT_ID`, and `DATABASE_URL` to start. AI credentials are optional for non-AI commands. If multiple providers are configured, Shodan tries OpenAI, Gemini, Grok, Anthropic, then Cloudflare Workers AI, moving to the next configured provider when one fails. Cloudflare requires both `CF_TOKEN` and `CF_ACCOUNT_ID`; it uses Workers AI for text fallback and a vision model for image requests.
+The bot requires `BOT_TOKEN`, `CLIENT_ID`, and `DATABASE_URL` to start. AI credentials are optional for non-AI commands. If multiple providers are configured, Shodan tries Gemini, OpenAI, Cloudflare Workers AI, Grok, then Anthropic, moving to the next configured provider when one fails. Cloudflare requires both `CF_TOKEN` and `CF_ACCOUNT_ID`; it uses Workers AI for text fallback and a vision model for image requests.
+
+OpenAI uses `gpt-6-luna`. AI generation defaults are stored per Discord server: temperature defaults to `1.0`, output tokens keep each command’s own limit unless a server-wide limit is set, and OpenAI reasoning effort defaults to `low`. OpenAI GPT-6 only accepts a temperature value when reasoning effort is `none`, so Shodan omits temperature from OpenAI requests at other reasoning levels; the temperature setting still applies to Gemini and Cloudflare.
 
 AI requests are rate-limited per provider to 10 per minute by default, with at most two running at once and a bounded waiting queue. Set `AI_REQUESTS_PER_MINUTE` to a value from 1 to 60 to adjust the per-provider cap. Temporary HTTP 429 and 5xx responses honor `Retry-After` and receive up to two retries.
 
 AI features send the content needed for the request to the configured AI provider. Depending on the command, this can include a question, campaign journal notes, character sheet text, or an uploaded image.
+
+Writing-style profiles are separate from message history and remain opt-in and server-specific. `/style learn` computes aggregate sentence, word, punctuation, contraction, and emoji statistics from the sample a user submits; the raw sample is not stored. Profiles remain in PostgreSQL until `/style forget` is used. A compact description of those statistics may be sent to the configured AI provider with that user's later requests so it can shape the response style.
 
 ## Install and run
 
@@ -92,7 +98,20 @@ Slash commands are registered when the bot starts. For local development, use `p
 
 D&D records are separated by Discord server and use that server's Main Campaign. Character sheets and memories belong to an individual Discord user; the story journal and encounter history are shared with the campaign. Journal entries keep their source text and a stored AI interpretation. After note changes, run `/story big-picture` to refresh the shared overview; quest, NPC, and encounter prompts reuse it until the next journal change. Wallet balances are per user and campaign, and deposits and withdrawals are recorded in the database ledger.
 
-Outside D&D campaign features, Shodan does not save user profiles, tarot readings, or command history. Per-command cooldowns use Discord user IDs in process memory only until the cooldown expires.
+Outside D&D campaign features, Shodan stores guild member names, avatar URLs, and message history as described below. Tarot readings and command history are not stored. Per-command cooldowns use Discord user IDs in process memory only until the cooldown expires.
+
+### Importing guild message history
+
+New user messages are saved automatically to their per-guild profile and message history while the bot is online. To backfill earlier posts and initialize profiles for current members, first apply the database migrations and then run:
+
+```bash
+pnpm prisma:migrate:deploy
+pnpm history:init
+```
+
+The backfill stores each member's guild display name and avatar URL, then imports message text, channel IDs, and timestamps from accessible text and announcement channels. It can be rerun safely: existing messages are not duplicated. Live capture includes new guild messages the bot receives, including in threads; bot-authored messages and direct messages are excluded. Attachments are not stored. The bot needs the Message Content privileged intent enabled in the Discord Developer Portal, plus permission to view the relevant channels; the backfill also needs the Server Members intent and Read Message History permission. Messages not accessible to the bot cannot be imported.
+
+Messages, guild display names, and avatar URLs are stored in the configured PostgreSQL database. Make sure server members are informed about this collection and follow applicable privacy requirements.
 
 Keep `.env` private and never commit API keys or bot credentials.
 

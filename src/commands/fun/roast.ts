@@ -70,7 +70,8 @@ const roastCommand: Command = {
       const ai = getAIService();
       const roast = await ai.createVisionCompletion(systemPrompt, textPrompt, avatarUrl, {
         temperature: 1.0,
-        max_tokens: 200
+        max_tokens: 200,
+        guildId: interaction.guildId
       });
 
       if (!roast?.trim()) throw new Error('Empty AI response');

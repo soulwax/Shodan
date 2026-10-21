@@ -40,14 +40,15 @@ async function bootstrap() {
     // Setup Discord client
     const client = setupDiscordClient()
 
-    // Register commands
-    await registerCommands(client)
-
     // Register events
     registerEvents(client)
 
     // Login to Discord
     await client.login(process.env.BOT_TOKEN)
+
+    // Register commands after login so a slow Discord REST refresh cannot
+    // prevent the bot from connecting to the gateway.
+    await registerCommands(client)
 
     logger.info('Shodan Discord Bot started successfully')
   } catch (error) {

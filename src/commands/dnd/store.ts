@@ -21,7 +21,7 @@ function fallbackNarration(total: bigint): string {
   return 'The clerk counts the coins twice, then locks them away.';
 }
 
-async function narrateDeposit(entries: Array<[DndCurrency, bigint]>): Promise<string> {
+async function narrateDeposit(entries: Array<[DndCurrency, bigint]>, guildId: string): Promise<string> {
   const total = entries.reduce((sum, [, amount]) => sum + amount, 0n);
   try {
     const response = await getAIService().createChatCompletion([
@@ -30,7 +30,7 @@ async function narrateDeposit(entries: Array<[DndCurrency, bigint]>): Promise<st
         content: 'You are the friendly, slightly opinionated keeper of a fantasy adventurers’ bank. Write one short, vivid line reacting to a deposit of coins that may use several denominations. Sound like a Dungeon Master adding flavor at the table: natural, playful, and specific to the size of the handful. Do not repeat amounts, invent fees, change the balance, or use markdown. Keep it under 25 words.'
       },
       { role: 'user', content: `A player deposited ${formatCoinEntries(entries)}. Give the bankkeeper’s one-line reaction.` }
-    ], { temperature: 0.95, max_tokens: 80 });
+    ], { temperature: 0.95, max_tokens: 80, guildId });
     return response?.trim().slice(0, 300) || fallbackNarration(total);
   } catch {
     logger.warn('[D&D] AI narration unavailable; using the standard deposit line.');
@@ -72,7 +72,7 @@ const storeCommand: Command = {
 
     try {
       const { server, campaign } = await getMainCampaignContext(guild.id, guild.name);
-      const narration = server.aiNarrationEnabled ? await narrateDeposit(entries) : fallbackNarration(entries.reduce((sum, [, value]) => sum + value, 0n));
+      const narration = server.aiNarrationEnabled ? await narrateDeposit(entries, guild.id) : fallbackNarration(entries.reduce((sum, [, value]) => sum + value, 0n));
       const result = await depositCoins({
         campaignId: campaign.id,
         discordUserId: interaction.user.id,

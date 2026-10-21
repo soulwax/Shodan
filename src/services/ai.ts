@@ -11,7 +11,15 @@ import { logger } from '../utils/logger';
 type Provider = 'openai' | 'gemini' | 'grok' | 'anthropic' | 'cloudflare';
 type ChatMessage = { role: 'user' | 'assistant' | 'system'; content: string };
 type ChatCompletionMessageParam = OpenAI.Chat.ChatCompletionMessageParam;
-type GenerationOptions = { model?: string; temperature?: number; max_tokens?: number };
+type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+type GenerationOptions = {
+  model?: string;
+  temperature?: number;
+  max_tokens?: number;
+  reasoning_effort?: ReasoningEffort;
+  guildId?: string | null;
+  styleInstruction?: string;
+};
 type ProviderJob = {
   run: () => Promise<string | null>;
   resolve: (value: string | null) => void;
@@ -131,9 +139,11 @@ export class AIService {
   }
 
   async createChatCompletion(messages: ChatMessage[], options: GenerationOptions = {}): Promise<string | null> {
-    const { temperature = 0.7, max_tokens = 1000 } = options;
+    const resolvedOptions = await this.resolveGenerationOptions(options);
+    const { temperature = 1.0, max_tokens = 1000 } = resolvedOptions;
+    const requestMessages = this.addStyleInstruction(messages, resolvedOptions.styleInstruction);
     return this.withProviderFallback(provider =>
-      this.generateText(provider, messages, { ...options, temperature, max_tokens })
+      this.generateText(provider, requestMessages, { ...resolvedOptions, temperature, max_tokens })
     );
   }
 
@@ -143,33 +153,99 @@ export class AIService {
     imageUrl: string,
     options: GenerationOptions = {}
   ): Promise<string | null> {
-    const { temperature = 0.9, max_tokens = 300 } = options;
-    const messages: ChatMessage[] = [
+    const resolvedOptions = await this.resolveGenerationOptions(options);
+    const { temperature = 1.0, max_tokens = 300 } = resolvedOptions;
+    const messages: ChatMessage[] = this.addStyleInstruction([
       { role: 'system', content: systemPrompt },
       { role: 'user', content: textPrompt }
-    ];
+    ], resolvedOptions.styleInstruction);
     let imageDataPromise: Promise<{ mimeType: string; data: string }> | undefined;
 
     return this.withProviderFallback(provider => {
       if (provider === 'gemini' || provider === 'anthropic' || provider === 'cloudflare') {
         imageDataPromise ??= this.downloadImage(imageUrl);
         if (provider === 'cloudflare') {
-          return imageDataPromise.then(image => this.generateCloudflare(messages, { temperature, max_tokens }, image));
+          return imageDataPromise.then(image => this.generateCloudflare(messages, { ...resolvedOptions, temperature, max_tokens }, image));
         }
         return imageDataPromise.then(image =>
           provider === 'gemini'
-            ? this.generateGemini(messages, { temperature, max_tokens }, image)
-            : this.generateAnthropic(messages, { max_tokens }, image)
+            ? this.generateGemini(messages, { ...resolvedOptions, temperature, max_tokens }, image)
+            : this.generateAnthropic(messages, { ...resolvedOptions, max_tokens }, image)
         );
       }
-      return this.generateOpenAICompatible(provider, messages, { temperature, max_tokens }, imageUrl);
+      return this.generateOpenAICompatible(provider, messages, { ...resolvedOptions, temperature, max_tokens }, imageUrl);
     });
+  }
+
+  private async resolveGenerationOptions(options: GenerationOptions): Promise<GenerationOptions> {
+    const { guildId, ...requestOptions } = options;
+    const requestContext = (await import('./ai-context.js')).getAIRequestContext();
+    const settingsGuildId = guildId ?? requestContext?.guildId ?? null;
+    let temperature = requestOptions.temperature ?? 1.0;
+    let max_tokens = requestOptions.max_tokens;
+    let reasoning_effort = requestOptions.reasoning_effort ?? 'low';
+
+    if (settingsGuildId) {
+      const { prisma } = await import('./prisma.js');
+      const settings = await prisma.dndServer.findUnique({
+        where: { discordId: settingsGuildId },
+        select: { id: true, aiTemperature: true, aiMaxTokens: true, aiReasoningEffort: true }
+      });
+      if (settings) {
+        temperature = settings.aiTemperature;
+        max_tokens = settings.aiMaxTokens ?? max_tokens;
+        reasoning_effort = settings.aiReasoningEffort as ReasoningEffort;
+      } else {
+        // Keep new servers on the same default shown by /ai-settings show.
+        temperature = 1.0;
+        reasoning_effort = 'low';
+      }
+      const styleProfile = settings && requestContext?.userId
+        ? await prisma.userWritingStyle.findUnique({
+            where: { serverId_discordUserId: { serverId: settings.id, discordUserId: requestContext.userId } },
+            select: { profile: true }
+          })
+        : null;
+      const profile = styleProfile ? this.formatStyleProfile(styleProfile.profile) : null;
+      if (profile) requestOptions.styleInstruction = profile;
+    }
+
+    return { ...requestOptions, temperature, max_tokens, reasoning_effort };
+  }
+
+  private formatStyleProfile(value: unknown): string | null {
+    if (!value || typeof value !== 'object') return null;
+    const profile = value as Record<string, unknown>;
+    const values = [
+      profile.avgWordsPerSentence,
+      profile.avgWordLength,
+      profile.lowercaseSentenceStartRatio,
+      profile.emojiPer100Words,
+      profile.exclamationPer100Sentences,
+      profile.questionPer100Sentences,
+      profile.contractionPer100Words
+    ];
+    if (!values.every(item => typeof item === 'number' && Number.isFinite(item))) return null;
+    const [sentenceLength, wordLength, lowercaseStarts, emojis, exclamations, questions, contractions] = values as number[];
+    return `The requesting user opted into a writing-style preference. Match these broad style traits where natural: about ${Math.round(sentenceLength)} words per sentence; average word length ${wordLength.toFixed(1)} characters; ${Math.round(lowercaseStarts * 100)}% lowercase sentence openings; ${emojis.toFixed(1)} emoji per 100 words; ${exclamations.toFixed(1)} exclamation marks per 100 sentences; ${questions.toFixed(1)} question marks per 100 sentences; ${contractions.toFixed(1)} contractions per 100 words. Do not reuse wording or personal details from their samples.`;
+  }
+
+  private addStyleInstruction(messages: ChatMessage[], instruction?: string): ChatMessage[] {
+    if (!instruction) return messages;
+    const withStyle = messages.slice();
+    const systemIndex = withStyle.findIndex(message => message.role === 'system');
+    if (systemIndex >= 0) {
+      withStyle[systemIndex] = { ...withStyle[systemIndex], content: `${withStyle[systemIndex].content}\n\n${instruction}` };
+    } else {
+      withStyle.unshift({ role: 'system', content: instruction });
+    }
+    return withStyle;
   }
 
   private async withProviderFallback(
     request: (provider: Provider) => Promise<string | null>
   ): Promise<string | null> {
-    const providers = (['openai', 'gemini', 'grok', 'anthropic', 'cloudflare'] as Provider[])
+    const providers = (['gemini', 'openai', 'cloudflare', 'grok', 'anthropic'] as Provider[])
       .filter(provider => this.apiKeys[provider]);
 
     if (providers.length === 0) {
@@ -294,7 +370,10 @@ export class AIService {
       maxRetries: 0,
       ...(provider === 'grok' ? { baseURL: 'https://api.x.ai/v1' } : {})
     });
-    const model = provider === 'grok' ? 'grok-4.7' : options.model || 'gpt-4.1-mini';
+    const model = provider === 'grok' ? 'grok-4.7' : options.model || 'gpt-6-luna';
+    const reasoningEffort = provider === 'openai' ? options.reasoning_effort ?? 'low' : undefined;
+    // GPT-6 only accepts temperature when reasoning effort is none.
+    const temperature = provider === 'openai' && reasoningEffort !== 'none' ? undefined : options.temperature;
     const apiMessages: ChatCompletionMessageParam[] = imageUrl
       ? [
           ...messages
@@ -310,12 +389,19 @@ export class AIService {
         ]
       : messages;
 
-    const response = await client.chat.completions.create({
+    const requestBody = {
       model,
       messages: apiMessages,
-      temperature: options.temperature,
-      max_tokens: options.max_tokens
-    });
+      ...(temperature === undefined ? {} : { temperature }),
+      ...(provider === 'openai'
+        ? { max_completion_tokens: options.max_tokens }
+        : { max_tokens: options.max_tokens }),
+      ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {})
+    };
+    // The pinned SDK predates GPT-6's `none`/`xhigh`/`max` effort values.
+    const response = await client.chat.completions.create(
+      requestBody as unknown as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming
+    );
     return response.choices[0]?.message?.content ?? null;
   }
 

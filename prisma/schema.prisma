@@ -43,9 +43,53 @@ model DndServer {
   discordId          String        @unique
   name               String
   aiNarrationEnabled Boolean       @default(true)
+  aiTemperature      Float         @default(1.0)
+  aiMaxTokens        Int?
+  aiReasoningEffort  String        @default("low")
   campaigns          DndCampaign[]
+  writingStyles      UserWritingStyle[]
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
+}
+
+model UserWritingStyle {
+  id            String    @id @default(uuid())
+  serverId      String
+  discordUserId String
+  profile       Json      @default("{}")
+  sampleCount   Int       @default(0)
+  server        DndServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([serverId, discordUserId])
+  @@index([serverId])
+}
+
+model UserMessageHistory {
+  id            String              @id @default(uuid())
+  guildId       String
+  discordUserId String
+  displayName   String
+  avatarUrl     String
+  messages      GuildMessageHistory[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@unique([guildId, discordUserId])
+  @@index([guildId])
+}
+
+model GuildMessageHistory {
+  id                String            @id @default(uuid())
+  historyId         String
+  discordMessageId  String            @unique
+  discordChannelId  String
+  content           String            @db.Text
+  createdAt         DateTime
+  history           UserMessageHistory @relation(fields: [historyId], references: [id], onDelete: Cascade)
+
+  @@index([historyId, createdAt])
 }
 
 model DndCampaign {
