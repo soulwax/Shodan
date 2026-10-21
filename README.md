@@ -20,7 +20,7 @@ Shodan is a Discord bot for D&D campaign support, AI assisted prompts, tarot rea
 - `/image` uses Luna to refine an image prompt, then generates an image with OpenAI's `gpt-image-2.5-flare`. `/speak` uses Luna to write a short line and OpenAI text-to-speech to create an MP3 voice clip.
 - `/roast`, `/compliment`, `/fortune`, and `/ship` create playful AI responses.
 - `/style learn` lets users opt in by submitting their own writing sample; `/style show` displays their profile and `/style forget` deletes it. Samples are analyzed in the bot process and discarded; only aggregate writing-pattern statistics are stored per user and server.
-- `/ai-settings` lets server managers set AI temperature, maximum output tokens, and OpenAI reasoning effort for that server.
+- `/ai-settings` lets server managers set AI temperature, maximum output tokens, OpenAI reasoning effort, and the per-server playful meanness level for non-wholesome `/divine` readings. Use `/ai-settings divine-meanness level:1` for gentle banter through `level:5` for the sharpest playful tone; the default is `2`. `/divine wholesome:true` always uses the kind reading and ignores this setting.
 - `/roll`, `/dice`, and `/coinflip` handle tabletop and casual rolls.
 
 ### Server and utility commands

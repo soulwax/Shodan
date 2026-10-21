@@ -27,6 +27,7 @@ import {
 import fs from 'fs'
 import path from 'path'
 import { getAIService } from '../../services/ai'
+import { prisma } from '../../services/prisma'
 import { Card } from '../../types/card' // Import the Card interface
 import { Command } from '../../types/command'
 import { logger } from '../../utils/logger'
@@ -35,6 +36,19 @@ import { logger } from '../../utils/logger'
 interface CardData {
   nhits: number
   cards: Card[]
+}
+
+const DEFAULT_DIVINE_MEANNESS = 2
+
+function meannessInstruction(level: number): string {
+  const instructions: Record<number, string> = {
+    1: 'Keep the teasing very gentle and affectionate, with only the lightest dry humor.',
+    2: 'Use dry, friendly humor with a little teasing, while clearly staying on the person’s side.',
+    3: 'Make the wit sharper and the teasing more noticeable, but keep it playful and useful.',
+    4: 'Use spicy, pointed banter and a stronger comic bite, while remaining supportive rather than cruel.',
+    5: 'Use the sharpest playful roast style: bold, irreverent, and funny, but never genuinely cruel.'
+  }
+  return instructions[level] ?? instructions[DEFAULT_DIVINE_MEANNESS]
 }
 
 const divineCommand: Command = {
@@ -87,31 +101,49 @@ const divineCommand: Command = {
       let cardIndex: number,
         isReversed: boolean,
         temperature: number,
-        isWholesome: boolean
+        isWholesome: boolean,
+        meanness: number
+      let meannessIsSeeded = false
       if (seedParam) {
-        const [seedIndex, seedReversed, seedTemp, seedWholesome] =
+        const [seedIndex, seedReversed, seedTemp, seedWholesome, seedMeanness] =
           seedParam.split('-')
         cardIndex = parseInt(seedIndex)
         isReversed = seedReversed === '1'
         temperature = parseFloat(seedTemp)
         isWholesome = seedWholesome === '1'
+        const seededMeanness = Number.parseInt(seedMeanness, 10)
+        meanness = Number.isInteger(seededMeanness) && seededMeanness >= 1 && seededMeanness <= 5
+          ? seededMeanness
+          : DEFAULT_DIVINE_MEANNESS
+        meannessIsSeeded = Number.isInteger(seededMeanness) && seededMeanness >= 1 && seededMeanness <= 5
         logger.info('[Divine] Using seed values:', {
           cardIndex,
           isReversed,
           temperature,
-          isWholesome
+          isWholesome,
+          meanness
         })
       } else {
         cardIndex = crypto.randomInt(0, cardData.cards.length)
         isReversed = crypto.randomInt(0, 2) === 1
         temperature = 0.7
         isWholesome = interaction.options.getBoolean('wholesome') ?? false
+        meanness = DEFAULT_DIVINE_MEANNESS
         logger.info('[Divine] Generated random values:', {
           cardIndex,
           isReversed,
           temperature,
-          isWholesome
+          isWholesome,
+          meanness
         })
+      }
+
+      if (!isWholesome && interaction.guildId && !meannessIsSeeded) {
+        const settings = await prisma.dndServer.findUnique({
+          where: { discordId: interaction.guildId },
+          select: { divineMeanness: true }
+        })
+        meanness = settings?.divineMeanness ?? meanness
       }
 
       const card = cardData.cards[cardIndex]
@@ -164,7 +196,7 @@ ${question ? `Their question: "${question}"` : 'They came without a particular q
 Card details: ${card.desc}
 Traditional meaning: ${isReversed ? card.meaning_rev : card.meaning_up}`
 
-      const sarcasticPrompt = `Give a tarot reading in the voice of a dry, funny friend: a little teasing, but ultimately on the person's side. Make the card feel relevant without pretending to know their private life or predict the future. Keep it conversational, useful, and under 800 characters. No lists or headings.
+      const sarcasticPrompt = `Give a tarot reading in the voice of a dry, funny friend. ${meannessInstruction(meanness)} Make the card feel relevant without pretending to know their private life or predict the future. Never target appearance, identity, health, trauma, or other sensitive traits. Keep it conversational, useful, and under 800 characters. No lists or headings.
 
 ${readingContext}`
 
@@ -255,7 +287,7 @@ ${readingContext}`
       embed.setFooter({
         text: `Take what resonates and leave what doesn’t. The cards are a prompt for reflection.\n\nSeed: ${cardIndex}-${
           isReversed ? '1' : '0'
-        }-${temperature}-${isWholesome ? '1' : '0'}`
+        }-${temperature}-${isWholesome ? '1' : '0'}-${meanness}`
       })
 
       if (fs.existsSync(imagePath)) {

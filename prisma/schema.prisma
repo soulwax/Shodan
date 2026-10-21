@@ -46,6 +46,7 @@ model DndServer {
   aiTemperature      Float         @default(1.0)
   aiMaxTokens        Int?
   aiReasoningEffort  String        @default("low")
+  divineMeanness     Int           @default(2)
   campaigns          DndCampaign[]
   writingStyles      UserWritingStyle[]
   createdAt          DateTime      @default(now())

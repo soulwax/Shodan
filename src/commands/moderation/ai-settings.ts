@@ -9,6 +9,14 @@ import { logger } from '../../utils/logger';
 
 const DEFAULT_TEMPERATURE = 1.0;
 const DEFAULT_REASONING_EFFORT = 'low';
+const DEFAULT_DIVINE_MEANNESS = 2;
+const MEANNESS_LABELS: Record<number, string> = {
+  1: 'Gentle',
+  2: 'Dry (default)',
+  3: 'Sharp',
+  4: 'Spicy',
+  5: 'Maximum playful bite'
+};
 
 const aiSettingsCommand: Command = {
   data: new SlashCommandBuilder()
@@ -52,6 +60,15 @@ const aiSettingsCommand: Command = {
           { name: 'Maximum', value: 'max' }
         )))
     .addSubcommand(command => command
+      .setName('divine-meanness')
+      .setDescription('Set the default playful snark level for non-wholesome /divine readings.')
+      .addIntegerOption(option => option
+        .setName('level')
+        .setDescription('1 is gentle; 5 is the sharpest playful setting. Default: 2.')
+        .setRequired(true)
+        .setMinValue(1)
+        .setMaxValue(5)))
+    .addSubcommand(command => command
       .setName('reset')
       .setDescription('Restore the default AI settings for this server.')),
   category: 'moderation',
@@ -73,24 +90,32 @@ const aiSettingsCommand: Command = {
       if (subcommand === 'show') {
         const settings = await prisma.dndServer.findUnique({
           where: { discordId: guild.id },
-          select: { aiTemperature: true, aiMaxTokens: true, aiReasoningEffort: true }
+          select: { aiTemperature: true, aiMaxTokens: true, aiReasoningEffort: true, divineMeanness: true }
         });
         await interaction.editReply(
           `**${guild.name} AI settings**\n` +
           `Temperature: ${settings?.aiTemperature ?? DEFAULT_TEMPERATURE.toFixed(1)}\n` +
           `Max output tokens: ${settings?.aiMaxTokens ?? 'command default'}\n` +
-          `OpenAI reasoning effort: ${settings?.aiReasoningEffort ?? DEFAULT_REASONING_EFFORT}`
+          `OpenAI reasoning effort: ${settings?.aiReasoningEffort ?? DEFAULT_REASONING_EFFORT}\n` +
+          `Default /divine meanness: ${MEANNESS_LABELS[settings?.divineMeanness ?? DEFAULT_DIVINE_MEANNESS]}`
         );
         return;
       }
 
       const values = subcommand === 'reset'
-        ? { aiTemperature: DEFAULT_TEMPERATURE, aiMaxTokens: null, aiReasoningEffort: DEFAULT_REASONING_EFFORT }
+        ? {
+            aiTemperature: DEFAULT_TEMPERATURE,
+            aiMaxTokens: null,
+            aiReasoningEffort: DEFAULT_REASONING_EFFORT,
+            divineMeanness: DEFAULT_DIVINE_MEANNESS
+          }
         : subcommand === 'temperature'
           ? { aiTemperature: interaction.options.getNumber('value', true) }
           : subcommand === 'max-tokens'
             ? { aiMaxTokens: interaction.options.getInteger('value', true) }
-            : { aiReasoningEffort: interaction.options.getString('effort', true) };
+            : subcommand === 'reasoning'
+              ? { aiReasoningEffort: interaction.options.getString('effort', true) }
+              : { divineMeanness: interaction.options.getInteger('level', true) };
 
       const settings = await prisma.dndServer.upsert({
         where: { discordId: guild.id },
@@ -99,16 +124,18 @@ const aiSettingsCommand: Command = {
           name: guild.name,
           aiTemperature: DEFAULT_TEMPERATURE,
           aiReasoningEffort: DEFAULT_REASONING_EFFORT,
+          divineMeanness: DEFAULT_DIVINE_MEANNESS,
           ...values
         },
         update: { name: guild.name, ...values },
-        select: { aiTemperature: true, aiMaxTokens: true, aiReasoningEffort: true }
+        select: { aiTemperature: true, aiMaxTokens: true, aiReasoningEffort: true, divineMeanness: true }
       });
 
       await interaction.editReply(
         `Saved AI settings for **${guild.name}**. Temperature: ${settings.aiTemperature}; ` +
         `max output tokens: ${settings.aiMaxTokens ?? 'command default'}; ` +
-        `OpenAI reasoning effort: ${settings.aiReasoningEffort}.`
+        `OpenAI reasoning effort: ${settings.aiReasoningEffort}; ` +
+        `default /divine meanness: ${MEANNESS_LABELS[settings.divineMeanness]}.`
       );
     } catch (error) {
       logger.error('[AI settings] Failed to read or update server settings:', error);
