@@ -23,6 +23,7 @@ import { Command, MessageContextCommand } from '../../types/command';
 import { Event } from '../../types/event';
 import { withAIRequestContext } from '../../services/ai-context';
 import { logger } from '../../utils/logger';
+import { handleImageRemixModal, isImageRemixModal } from '../../commands/fun/remix-image-message';
 
 // commandName -> userId -> expiry timestamp (ms)
 const cooldowns = new Collection<string, Collection<string, number>>();
@@ -31,6 +32,15 @@ const interactionCreateEvent: Event = {
   name: Events.InteractionCreate,
   once: false,
   async execute(interaction: Interaction & { client: ExtendedClient }) {
+    if (interaction.isModalSubmit()) {
+      if (isImageRemixModal(interaction.customId)) {
+        await withAIRequestContext(interaction.guildId, interaction.user.id, () =>
+          handleImageRemixModal(interaction)
+        );
+      }
+      return;
+    }
+
     if (!interaction.isChatInputCommand() && !interaction.isMessageContextMenuCommand()) return;
 
     const command = interaction.client.commands.get(interaction.commandName);
@@ -49,12 +59,15 @@ const interactionCreateEvent: Event = {
       const userId = interaction.user.id;
       const now = Date.now();
       const cooldownMs = command.cooldown * 1000;
+      const commandLabel = interaction.isChatInputCommand()
+        ? `/${command.data.name}`
+        : `Apps > ${command.data.name}`;
 
       const expiry = timestamps.get(userId);
       if (expiry && now < expiry) {
         const remaining = ((expiry - now) / 1000).toFixed(1);
         await interaction.reply({
-          content: `Please wait **${remaining}s** before using \`/${command.data.name}\` again.`,
+          content: `Please wait **${remaining}s** before using \`${commandLabel}\` again.`,
           ephemeral: true
         });
         return;

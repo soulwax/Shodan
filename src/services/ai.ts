@@ -202,6 +202,53 @@ export class AIService {
     return Buffer.from(imageBase64, 'base64');
   }
 
+  async editImage(prompt: string, imageUrl: string): Promise<Buffer> {
+    if (!this.apiKeys.openai) throw new Error('OPENAI_API_KEY is required for image editing');
+
+    let parsedImageUrl: URL;
+    try {
+      parsedImageUrl = new URL(imageUrl);
+    } catch {
+      throw new Error('The selected image has an invalid URL');
+    }
+    if (parsedImageUrl.protocol !== 'https:') {
+      throw new Error('The selected image must be available over HTTPS');
+    }
+
+    const imageBase64 = await this.withProviderRetries('openai', () =>
+      this.enqueueProviderRequest('openai', async () => {
+        const response = await fetchWithProviderTimeout(
+          'OpenAI image editing',
+          'https://api.openai.com/v1/images/edits',
+          {
+            method: 'POST',
+            headers: {
+              authorization: `Bearer ${this.apiKeys.openai}`,
+              'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: 'gpt-image-2.5-flare',
+              images: [{ image_url: imageUrl }],
+              prompt,
+              size: '1024x1024',
+              quality: 'medium',
+              output_format: 'png'
+            })
+          },
+          120_000
+        );
+        if (!response.ok) throw await providerHttpError('OpenAI image editing', response);
+        const result = await response.json() as { data?: Array<{ b64_json?: string }> };
+        const image = result.data?.[0]?.b64_json;
+        if (!image) throw new Error('OpenAI returned no edited image data');
+        return image;
+      })
+    );
+
+    if (!imageBase64) throw new Error('OpenAI image editing returned an empty result');
+    return Buffer.from(imageBase64, 'base64');
+  }
+
   async generateSpeech(input: string, voice: string): Promise<Buffer> {
     if (!this.apiKeys.openai) throw new Error('OPENAI_API_KEY is required for speech generation');
 
