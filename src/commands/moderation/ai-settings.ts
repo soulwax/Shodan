@@ -1,5 +1,6 @@
 import {
   ChatInputCommandInteraction,
+  EmbedBuilder,
   PermissionFlagsBits,
   SlashCommandBuilder
 } from 'discord.js';
@@ -23,6 +24,30 @@ const MEANNESS_LABELS: Record<number, string> = {
   4: 'Spicy',
   5: 'Maximum playful bite'
 };
+
+function personaLabel(persona: ReturnType<typeof getPersonaById>): string {
+  if (!persona) return 'Random each reading';
+  const sexLabel = persona.sex === 'female' ? 'Female' : 'Male';
+  return `${sexLabel} · ${persona.name}`;
+}
+
+function personaEmbed(persona: NonNullable<ReturnType<typeof getPersonaById>>, guildName: string): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle(persona.name)
+    .setDescription(
+      `${persona.sex === 'female' ? 'Female' : 'Male'} · Age ${persona.age} · ${MEANNESS_LABELS[persona.intensity]}\n` +
+      `${persona.occupation} · ${persona.origin}`
+    )
+    .addFields(
+      { name: 'Background', value: persona.background },
+      { name: 'Temperament', value: persona.temperament },
+      { name: 'Traits', value: persona.traits.join(' · ') },
+      { name: 'Values', value: persona.values.join(' · ') },
+      { name: 'Mannerisms', value: persona.mannerisms.join(' · ') },
+      { name: 'Voice direction', value: persona.voice }
+    )
+    .setFooter({ text: `${guildName} · persistent /divine voice` });
+}
 
 const aiSettingsCommand: Command = {
   data: new SlashCommandBuilder()
@@ -76,15 +101,15 @@ const aiSettingsCommand: Command = {
         .setMaxValue(5)))
     .addSubcommand(command => command
       .setName('divine-personality')
-      .setDescription('Choose the named voice for non-wholesome /divine readings.')
+      .setDescription('Set or inspect this server’s voice for non-wholesome /divine readings.')
       .addStringOption(option => option
         .setName('voice')
-        .setDescription('Choose a voice for the current meanness level, or randomize each reading.')
-        .setRequired(true)
+        .setDescription('Choose a voice to save, or leave blank to view this server’s saved voice.')
+        .setRequired(false)
         .addChoices(
           { name: 'Random each reading', value: RANDOM_PERSONA_ID },
           ...PERSONAS.map(persona => ({
-            name: `${persona.name} · ${MEANNESS_LABELS[persona.intensity]}`,
+            name: `${personaLabel(persona)} · ${MEANNESS_LABELS[persona.intensity]}`,
             value: persona.id
           }))
         )))
@@ -116,8 +141,8 @@ const aiSettingsCommand: Command = {
         const voiceId = settings?.divinePersonality ?? RANDOM_PERSONA_ID;
         const selectedPersona = getPersonaById(voiceId);
         const voiceDescription = selectedPersona?.intensity === meanness
-          ? selectedPersona.name
-          : `Random each reading (${getPersonasForIntensity(meanness).map(persona => persona.name).join(', ')})`;
+          ? personaLabel(selectedPersona)
+          : `Random each reading (${getPersonasForIntensity(meanness).map(personaLabel).join(', ')})`;
         await interaction.editReply(
           `**${guild.name} AI settings**\n` +
           `Temperature: ${settings?.aiTemperature ?? DEFAULT_TEMPERATURE.toFixed(1)}\n` +
@@ -130,17 +155,45 @@ const aiSettingsCommand: Command = {
       }
 
       if (subcommand === 'divine-personality') {
-        const voiceId = interaction.options.getString('voice', true);
+        const voiceId = interaction.options.getString('voice');
         const settings = await prisma.dndServer.findUnique({
           where: { discordId: guild.id },
-          select: { divineMeanness: true }
+          select: { divineMeanness: true, divinePersonality: true }
         });
         const meanness = settings?.divineMeanness ?? DEFAULT_DIVINE_MEANNESS;
+
+        if (voiceId === null) {
+          const selectedId = settings?.divinePersonality ?? RANDOM_PERSONA_ID;
+          const selectedPersona = getPersonaById(selectedId);
+          if (selectedPersona?.intensity === meanness) {
+            await interaction.editReply({ embeds: [personaEmbed(selectedPersona, guild.name)] });
+            return;
+          }
+
+          const candidates = getPersonasForIntensity(meanness);
+          const embed = new EmbedBuilder()
+            .setTitle(`${guild.name} · /divine voice`)
+            .setDescription(
+              `Random each reading · ${MEANNESS_LABELS[meanness]}\n` +
+              'Choose a voice with `/ai-settings divine-personality` to save it for this server.'
+            )
+            .addFields(candidates.map(persona => ({
+              name: personaLabel(persona),
+              value: `Age ${persona.age} · ${persona.occupation}\n${persona.background}`
+            })));
+          await interaction.editReply({ embeds: [embed] });
+          return;
+        }
+
         const persona = getPersonaById(voiceId);
+        if (voiceId !== RANDOM_PERSONA_ID && !persona) {
+          await interaction.editReply('That voice is not available. Choose one from the listed options.');
+          return;
+        }
         if (persona && persona.intensity !== meanness) {
-          const compatible = getPersonasForIntensity(meanness).map(candidate => candidate.name).join(', ');
+          const compatible = getPersonasForIntensity(meanness).map(personaLabel).join(', ');
           await interaction.editReply(
-            `**${persona.name}** is a ${MEANNESS_LABELS[persona.intensity].toLowerCase()} voice. ` +
+            `**${personaLabel(persona)}** is a ${MEANNESS_LABELS[persona.intensity].toLowerCase()} voice. ` +
             `This server is set to ${MEANNESS_LABELS[meanness]}. Choose one of these voices: ${compatible}. ` +
             `You can also change the meanness level first.`
           );
@@ -163,7 +216,7 @@ const aiSettingsCommand: Command = {
         const savedPersona = getPersonaById(updated.divinePersonality);
         await interaction.editReply(
           `Saved the default /divine voice for **${guild.name}**: ` +
-          `${savedPersona?.name ?? 'Random each reading'}.`
+          `${personaLabel(savedPersona)}.`
         );
         return;
       }
@@ -218,12 +271,12 @@ const aiSettingsCommand: Command = {
         `max output tokens: ${settings.aiMaxTokens ?? 'command default'}; ` +
         `OpenAI reasoning effort: ${settings.aiReasoningEffort}; ` +
         `default /divine meanness: ${MEANNESS_LABELS[settings.divineMeanness]}; ` +
-        `voice: ${getPersonaById(settings.divinePersonality)?.name ?? 'Random each reading'}.` +
+        `voice: ${personaLabel(getPersonaById(settings.divinePersonality))}.` +
         (resetIncompatibleVoice ? ' The previously selected voice did not match this level, so it was reset to random.' : '')
       );
     } catch (error) {
       logger.error('[AI settings] Failed to read or update server settings:', error);
-      await interaction.editReply('I couldn’t save those AI settings. Please try again.');
+      await interaction.editReply('I couldn’t read or save those AI settings. Please try again.');
     }
   }
 };

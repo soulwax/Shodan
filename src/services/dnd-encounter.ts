@@ -1,5 +1,5 @@
-import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
+import { randomUuid } from '../utils/random';
 
 export type EncounterCombatant = {
   id: string;
@@ -54,7 +54,7 @@ export function readCombatants(value: Prisma.JsonValue): EncounterCombatant[] {
   return value.filter((item): item is Prisma.JsonObject =>
     typeof item === 'object' && item !== null && !Array.isArray(item)
   ).map(item => ({
-    id: typeof item.id === 'string' ? item.id : randomUUID(),
+    id: typeof item.id === 'string' ? item.id : randomUuid(),
     name: typeof item.name === 'string' ? item.name : 'Unknown combatant',
     initiative: typeof item.initiative === 'number' ? item.initiative : 0,
     kind: item.kind === 'enemy' ? 'enemy' : 'character',
@@ -73,7 +73,7 @@ export function toJson(combatants: EncounterCombatant[]): Prisma.InputJsonValue 
 }
 
 export function combatantId(): string {
-  return randomUUID();
+  return randomUuid();
 }
 
 export function formatCombatant(combatant: EncounterCombatant): string {

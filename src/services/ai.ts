@@ -6,13 +6,18 @@
 // (at your option) any later version.
 
 import { OpenAI } from 'openai';
+import { getPersonaById, RANDOM_PERSONA_ID } from '../data/personas';
+import type { PersonaProfile } from '../data/personas';
+import { dissasociationEngine } from './dissasociation-engine';
 import { logger } from '../utils/logger';
 
 type Provider = 'openai' | 'gemini' | 'grok' | 'anthropic' | 'cloudflare';
 type ChatMessage = { role: 'user' | 'assistant' | 'system'; content: string };
 type ChatCompletionMessageParam = OpenAI.Chat.ChatCompletionMessageParam;
 type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+type DissasociationMode = 'random' | 'server' | 'none';
 type GenerationOptions = {
+  provider?: Provider | 'auto';
   model?: string;
   temperature?: number;
   max_tokens?: number;
@@ -20,6 +25,14 @@ type GenerationOptions = {
   guildId?: string | null;
   styleInstruction?: string;
   preserveExplicitTemperature?: boolean;
+  /** Defaults to random. Use server to apply the saved persona, or none to suppress injection. */
+  dissasociation?: DissasociationMode;
+  personaPurpose?: 'delivery' | 'visual';
+};
+type ProviderGenerationOptions = Omit<GenerationOptions, 'dissasociation' | 'personaPurpose' | 'guildId' | 'preserveExplicitTemperature'>;
+type ResolvedGenerationOptions = {
+  options: ProviderGenerationOptions;
+  persona: PersonaProfile | null;
 };
 type ProviderJob = {
   run: () => Promise<string | null>;
@@ -140,32 +153,58 @@ export class AIService {
       : 10;
   }
 
-  async createChatCompletion(messages: ChatMessage[], options: GenerationOptions = {}): Promise<string | null> {
-    const resolvedOptions = await this.resolveGenerationOptions(options);
-    const { temperature = 1.0, max_tokens = 1000 } = resolvedOptions;
-    const requestMessages = this.addStyleInstruction(messages, resolvedOptions.styleInstruction);
-    return this.withProviderFallback(provider =>
-      this.generateText(provider, requestMessages, { ...resolvedOptions, temperature, max_tokens })
+  /** Shared language/vision gateway with random, saved-server, and no-persona modes. */
+  async generateText(
+    messages: ChatMessage[],
+    options: GenerationOptions = {},
+    imageUrl?: string
+  ): Promise<string | null> {
+    const providerPreference = options.provider ?? 'auto';
+    if (providerPreference !== 'auto' && !this.apiKeys[providerPreference]) {
+      throw new Error(`${providerNames[providerPreference]} credentials are required for this AI request`);
+    }
+
+    const resolved = await this.resolveGenerationOptions(options);
+    const resolvedOptions = resolved.options;
+    const { temperature = 1.0 } = resolvedOptions;
+    const max_tokens = resolvedOptions.max_tokens ?? (
+      imageUrl ? 300 : providerPreference === 'openai' ? 500 : 1000
+    );
+    const styledMessages = this.addStyleInstruction(messages, resolvedOptions.styleInstruction);
+    const dissasociation = options.dissasociation ?? 'random';
+    const personaPurpose = options.personaPurpose ?? 'delivery';
+    const requestMessages = dissasociation === 'none'
+      ? styledMessages
+      : dissasociation === 'server'
+        ? dissasociationEngine.applyPersona(styledMessages, resolved.persona, personaPurpose)
+        : dissasociationEngine.applyRandom(styledMessages, personaPurpose);
+    let imageDataPromise: Promise<{ mimeType: string; data: string }> | undefined;
+
+    const generate = (provider: Provider): Promise<string | null> => {
+      const providerOptions = { ...resolvedOptions, temperature, max_tokens };
+      if (imageUrl && ['gemini', 'anthropic', 'cloudflare'].includes(provider)) {
+        imageDataPromise ??= this.downloadImage(imageUrl);
+        return imageDataPromise.then(image =>
+          provider === 'gemini'
+            ? this.generateGemini(requestMessages, providerOptions, image)
+            : provider === 'anthropic'
+              ? this.generateAnthropic(requestMessages, providerOptions, image)
+              : this.generateCloudflare(requestMessages, providerOptions, image)
+        );
+      }
+      return this.generateWithProvider(provider, requestMessages, providerOptions, imageUrl);
+    };
+
+    if (providerPreference === 'auto') {
+      return this.withProviderFallback(generate);
+    }
+
+    return this.withProviderRetries(providerPreference, () =>
+      this.enqueueProviderRequest(providerPreference, () => generate(providerPreference))
     );
   }
 
-  async createOpenAICompletion(messages: ChatMessage[], options: GenerationOptions = {}): Promise<string | null> {
-    if (!this.apiKeys.openai) throw new Error('OPENAI_API_KEY is required for Luna media prompt generation');
-
-    const resolvedOptions = await this.resolveGenerationOptions({ ...options, model: 'gpt-6-luna' });
-    const { temperature = 1.0, max_tokens = 500 } = resolvedOptions;
-    return this.withProviderRetries('openai', () =>
-      this.enqueueProviderRequest('openai', () =>
-        this.generateOpenAICompatible('openai', messages, {
-          ...resolvedOptions,
-          model: 'gpt-6-luna',
-          temperature,
-          max_tokens
-        })
-      )
-    );
-  }
-
+  /** Media generation stays on dedicated endpoints outside the text gateway. */
   async generateImage(prompt: string): Promise<Buffer> {
     if (!this.apiKeys.openai) throw new Error('OPENAI_API_KEY is required for image generation');
 
@@ -249,8 +288,12 @@ export class AIService {
     return Buffer.from(imageBase64, 'base64');
   }
 
-  async generateSpeech(input: string, voice: string): Promise<Buffer> {
+  async generateSpeech(input: string, voice: string, guildId?: string | null): Promise<Buffer> {
     if (!this.apiKeys.openai) throw new Error('OPENAI_API_KEY is required for speech generation');
+    const persona = await this.getServerPersona(guildId);
+    const instructions = persona
+      ? `Speak clearly and naturally using this fictional character’s delivery style: ${persona.voice}. Preserve the spoken text exactly; do not add biographical details or extra words.`
+      : 'Speak clearly and naturally, with a friendly conversational tone.';
 
     const audioBase64 = await this.withProviderRetries('openai', () =>
       this.enqueueProviderRequest('openai', async () => {
@@ -267,7 +310,7 @@ export class AIService {
               model: 'gpt-4o-mini-tts',
               voice,
               input,
-              instructions: 'Speak clearly and naturally, with a friendly conversational tone.',
+              instructions,
               response_format: 'mp3'
             })
           },
@@ -282,51 +325,31 @@ export class AIService {
     return Buffer.from(audioBase64, 'base64');
   }
 
-  async createVisionCompletion(
-    systemPrompt: string,
-    textPrompt: string,
-    imageUrl: string,
-    options: GenerationOptions = {}
-  ): Promise<string | null> {
-    const resolvedOptions = await this.resolveGenerationOptions(options);
-    const { temperature = 1.0, max_tokens = 300 } = resolvedOptions;
-    const messages: ChatMessage[] = this.addStyleInstruction([
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: textPrompt }
-    ], resolvedOptions.styleInstruction);
-    let imageDataPromise: Promise<{ mimeType: string; data: string }> | undefined;
-
-    return this.withProviderFallback(provider => {
-      if (provider === 'gemini' || provider === 'anthropic' || provider === 'cloudflare') {
-        imageDataPromise ??= this.downloadImage(imageUrl);
-        if (provider === 'cloudflare') {
-          return imageDataPromise.then(image => this.generateCloudflare(messages, { ...resolvedOptions, temperature, max_tokens }, image));
-        }
-        return imageDataPromise.then(image =>
-          provider === 'gemini'
-            ? this.generateGemini(messages, { ...resolvedOptions, temperature, max_tokens }, image)
-            : this.generateAnthropic(messages, { ...resolvedOptions, max_tokens }, image)
-        );
-      }
-      return this.generateOpenAICompatible(provider, messages, { ...resolvedOptions, temperature, max_tokens }, imageUrl);
-    });
-  }
-
-  private async resolveGenerationOptions(options: GenerationOptions): Promise<GenerationOptions> {
-    const { guildId, preserveExplicitTemperature = false, ...requestOptions } = options;
+  private async resolveGenerationOptions(options: GenerationOptions): Promise<ResolvedGenerationOptions> {
+    const {
+      guildId,
+      preserveExplicitTemperature = false,
+      dissasociation = 'random',
+      ...requestOptions
+    } = options;
+    delete requestOptions.personaPurpose;
     const requestContext = (await import('./ai-context.js')).getAIRequestContext();
     const settingsGuildId = guildId ?? requestContext?.guildId ?? null;
     let temperature = requestOptions.temperature ?? 1.0;
     let max_tokens = requestOptions.max_tokens;
     let reasoning_effort = requestOptions.reasoning_effort ?? 'low';
+    let persona: PersonaProfile | null = null;
 
     if (settingsGuildId) {
       const { prisma } = await import('./prisma.js');
       const settings = await prisma.dndServer.findUnique({
         where: { discordId: settingsGuildId },
-        select: { id: true, aiTemperature: true, aiMaxTokens: true, aiReasoningEffort: true }
+        select: { id: true, aiTemperature: true, aiMaxTokens: true, aiReasoningEffort: true, divinePersonality: true }
       });
       if (settings) {
+        if (dissasociation === 'server') {
+          persona = getPersonaById(settings.divinePersonality) ?? null;
+        }
         if (!preserveExplicitTemperature || requestOptions.temperature === undefined) {
           temperature = settings.aiTemperature;
         }
@@ -347,7 +370,20 @@ export class AIService {
       if (profile) requestOptions.styleInstruction = profile;
     }
 
-    return { ...requestOptions, temperature, max_tokens, reasoning_effort };
+    return {
+      options: { ...requestOptions, temperature, max_tokens, reasoning_effort },
+      persona
+    };
+  }
+
+  private async getServerPersona(guildId?: string | null): Promise<PersonaProfile | null> {
+    if (!guildId) return null;
+    const { prisma } = await import('./prisma.js');
+    const settings = await prisma.dndServer.findUnique({
+      where: { discordId: guildId },
+      select: { divinePersonality: true }
+    });
+    return getPersonaById(settings?.divinePersonality ?? RANDOM_PERSONA_ID) ?? null;
   }
 
   private formatStyleProfile(value: unknown): string | null {
@@ -484,15 +520,16 @@ export class AIService {
     }
   }
 
-  private async generateText(
+  private async generateWithProvider(
     provider: Provider,
     messages: ChatMessage[],
-    options: GenerationOptions
+    options: GenerationOptions,
+    imageUrl?: string
   ): Promise<string | null> {
     if (provider === 'gemini') return this.generateGemini(messages, options);
     if (provider === 'anthropic') return this.generateAnthropic(messages, options);
     if (provider === 'cloudflare') return this.generateCloudflare(messages, options);
-    return this.generateOpenAICompatible(provider, messages, options);
+    return this.generateOpenAICompatible(provider, messages, options, imageUrl);
   }
 
   private async generateOpenAICompatible(

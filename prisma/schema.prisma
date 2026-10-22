@@ -83,13 +83,14 @@ model UserMessageHistory {
   @@index([guildId])
 }
 
-model GuildMessageHistoryOptOut {
-  guildId       String
-  discordUserId String
-  optedOutAt    DateTime @default(now())
+model GuildMessageHistoryConsent {
+  guildId            String
+  discordUserId      String
+  optedInAt          DateTime  @default(now())
+  backfillOptedInAt  DateTime?
 
   @@id([guildId, discordUserId])
-  @@index([guildId])
+  @@index([guildId, backfillOptedInAt])
 }
 
 model GuildMessageHistory {

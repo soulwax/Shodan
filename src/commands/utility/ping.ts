@@ -23,6 +23,7 @@ import {
   SlashCommandBuilder
 } from 'discord.js'
 import { Command } from '../../types/command'
+import { randomIndex } from '../../utils/random'
 
 const pingCommand: Command = {
   data: new SlashCommandBuilder()
@@ -45,8 +46,7 @@ const pingCommand: Command = {
     ]
 
     // Get a random greeting
-    const greeting =
-      germanGreetings[Math.floor(Math.random() * germanGreetings.length)]
+    const greeting = germanGreetings[randomIndex(germanGreetings.length)]
 
     const embed = new EmbedBuilder()
       .setTitle('🏓 Pong!')

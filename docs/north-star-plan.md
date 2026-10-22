@@ -23,28 +23,99 @@ The test for a feature is simple: does it help someone at the table in a few sec
 - `/quest`, `/npc`, and encounters can use the campaign journal as context. Generated quests and NPCs are saved as free-text notes when requested; they do not yet have stable identities or update histories.
 - `/divine` offers one-card, three-card, past–present–possible-direction, yes/no, decision, relationship, and Celtic Cross spreads. Draws are without replacement, each position is shown, and replay seeds preserve the draw and named voice. Readings are ephemeral. Named, level-aware voices live in the reusable [`personas.ts`](../src/data/personas.ts) registry.
 - `/session` starts a campaign session, records attributed notes with visibility, shows current session and encounter state, and drafts a recap from shared notes. A DM must review and publish the recap before it becomes a shared journal entry. See [`dnd-session.ts`](../src/services/dnd-session.ts).
-- The shared AI service already has provider fallback, rate limiting, bounded concurrency, and retry handling. The test suite is currently narrow: its only test file covers D&D currency parsing.
+- The shared AI service already has provider fallback, rate limiting, bounded concurrency, and retry handling. Tests cover currency parsing plus campaign channel scope, journal visibility rules, spread definitions, and replay seeds. Database integration and Discord command-flow coverage are still missing.
 - The README documents per-user message-history capture, opt-out controls, and the content sent to AI providers. These controls should remain visible as campaign features grow.
 
 ### Execution progress
 
-The first execution pass has delivered campaign/channel selection and note visibility, the data-driven spread engine with replayable multi-card readings, and a minimal session lifecycle with a DM-reviewed recap. Remaining Phase 0 work includes campaign export/deletion and broader automated coverage; later phases still include entity-based campaign memory, structured encounter event history, and expanded player actions.
+The first execution pass delivered campaign/channel selection and note visibility, replayable multi-card spreads, and a minimal session lifecycle with a DM-reviewed recap. The current DM role is server-wide, so campaigns with different DMs still need separate role scopes. Campaign export/deletion, archive guards, database integration coverage, entity-based memory, encounter event history, and expanded player actions remain ahead.
+
+## Next execution sequence
+
+Build these milestones in order. Each one creates a reliable base for the next, and each can ship independently.
+
+### Milestone 1 — Finish campaign trust and lifecycle controls
+
+**Outcome:** campaign permissions and lifecycle actions remain isolated when a server hosts multiple groups.
+
+- Move the DM role from `DndServer` to `DndCampaign`. Backfill the current server role onto existing campaigns during migration so current access carries over; after migration, authorization checks use only the selected campaign’s role.
+- Make `/campaign dm-role` and `/campaign show` operate on the campaign routed from the current channel, with the server default applying in unbound channels.
+- Prevent archiving a campaign with an active encounter or session. Explain what needs to be closed first.
+- Add a private JSON campaign export that reports its visibility scope. Include shared notes for authorized members, DM-only notes for that campaign’s DM role, and personal notes only for their authors. Add a separately confirmed delete action for server managers, with the campaign name and affected-record counts shown before deletion.
+- Add database-backed tests for campaign routing, role authorization, archive rules, exports, deletes, and isolation between two campaigns in one server.
+
+**Acceptance:** a role assigned to one campaign cannot read another campaign’s secrets; an export never crosses campaign IDs or note visibility; deleting one campaign leaves the server’s other campaigns intact; active play cannot be archived accidentally.
+
+**First slice:** migrate and backfill the per-campaign DM role, thread the campaign ID through every authorization check, and add a two-campaign access test. Then add active-session/encounter archive guards before implementing export and deletion.
+
+### Milestone 2 — Turn the journal into source-backed campaign canon
+
+**Outcome:** campaign facts have stable identities, sources, status, and correction history.
+
+- Add typed entities for NPCs, locations, factions, quests, and important objects, with aliases and links to the journal entries that introduced or changed them.
+- Represent each fact’s status as established, rumor, theory, or unresolved, and retain its author, date, source, and visibility. Corrections append a change record and invalidate affected summaries.
+- Change `/npc` and `/quest` into reviewable drafts. Saving creates or updates an entity and source entry; it does not silently turn generated text into canon.
+- Replace keyword-only `/story ask` selection with PostgreSQL full-text search plus entity aliases. Return a small set of source entries and cite each supported answer. Show conflicts and missing facts explicitly.
+- Generate campaign overviews and active-thread summaries from source references, and rebuild only summaries affected by changed entries.
+- Add DM preparation views for recent events, active quests, unresolved clues, and relevant NPCs, with visibility applied before prompt construction.
+
+**Acceptance:** every campaign answer can be followed to its source; a correction or deletion updates related entity views and summaries; generated NPCs and quests remain drafts until a person saves them; player answers contain no DM-only facts.
+
+### Milestone 3 — Make sessions and encounters recoverable
+
+**Outcome:** the group can follow what happened during a session and correct mechanical actions safely.
+
+- Add a session-note context menu action so players can capture a post into the active session with the same shared, DM-only, and private choices as `/session note`.
+- Connect the session start view to the last reviewed recap and active threads. Include note references in recap drafts so a DM can verify each claim.
+- Add a typed encounter event table for initiative changes, turn advances, damage, healing, removals, and encounter end. Record the Discord user and interaction ID for each action.
+- Make each mechanical update and event write atomic. Add undo or correction actions that append a compensating event instead of erasing history.
+- Extend encounter status with current turn, scene, and recent events. Add conditions and death saves after event history is in place.
+- Test simultaneous updates, retries, duplicate interactions, recap source coverage, and visibility boundaries.
+
+**Acceptance:** retries cannot apply damage twice; every displayed state change has an attributable event; corrections preserve the original event and current state; session recaps cite recorded notes and require DM review.
+
+### Milestone 4 — Add dependable player character actions
+
+**Outcome:** players can use their saved character at the table without making the AI authoritative over rules or state.
+
+- Validate imported sheets against a typed schema and show unresolved fields for player correction before saving.
+- Add a campaign rules profile based on `gameSystem`; begin with the ruleset the group selects and keep arithmetic deterministic.
+- Add common player actions in small slices: ability checks with advantage/disadvantage, rests, inspiration, conditions, and limited-use resources.
+- Define ownership clearly: players update their own character resources; DMs can correct campaign encounter state; every update has a recoverable history.
+- Add fixtures for imported sheet shapes and tests for rules arithmetic, ownership, resource limits, and concurrent updates.
+
+**Acceptance:** imported fields are validated and editable; command results are deterministic and tied to the selected rules profile; AI can explain a result but cannot change a character or encounter value.
+
+### Milestone 5 — Improve table UX from observed use
+
+**Outcome:** frequent actions take fewer steps while preserving command accessibility and recovery.
+
+- After the command workflows are stable, add optional persistent Discord controls for encounter turns and common HP changes.
+- Add a party view that separates shared state, each player’s own notes, and DM-only preparation.
+- Gather opt-in feedback after real sessions about time saved, recap accuracy, and missing actions. Use it to choose the next command rather than collecting channel conversations.
+- Review AI provider/model changes and disclose which command content is sent to which provider.
+
+**Acceptance:** controls remain usable after bot restarts, slash commands remain available, and changes are prioritized from explicit group feedback.
+
+### Divination follow-up
+
+Maintain the current spread registry and improve it with replay/output regression fixtures, clearer card-position diagrams, and opt-in feedback on usefulness. Add another divination system only after the tarot spreads have real use; keep its meanings and constraints in its own data set. Do not store questions or readings for product analytics.
 
 ## Roadmap
 
-### Phase 0 — Protect campaign state and access
+### Phase 0 — Protect campaign state and access (foundation delivered; Milestone 1 remains)
 
 Do this before adding more campaign memory or player-facing AI.
 
-- Add campaign management: create, list, rename, archive, and select a campaign; provide a server default while allowing a command or channel to choose a different active campaign.
-- Add campaign roles and visibility levels: shared canon, player-visible notes, DM-only secrets, and personal character notes. Define who can add, edit, publish, or delete each kind.
-- Make every AI retrieval path apply visibility filters before building its prompt. Add tests that prove a player cannot retrieve a DM-only fact through a direct question, recap, NPC generation, or encounter twist.
-- Add export and deletion paths for a campaign and its records. Keep any message-history feature separate from the intentional campaign journal.
-- Add core tests around campaign scoping, visibility, dice/state transitions, encounter turns, character parsing validation, and save/delete operations.
+- Campaign creation, defaults, channel binding, archiving, and restoration are implemented. The per-campaign DM role, active-play archive guard, export, and deletion remain.
+- Shared, DM-only, and private journal/session notes are implemented. Expand authorization tests to database-backed command paths and multiple campaigns.
+- Keep AI retrieval filters in place before prompt assembly. Cover direct questions, recaps, NPC generation, and encounter twists with integration tests.
+- Keep message-history controls separate from intentional campaign records.
+- Expand automated coverage to dice/state transitions, encounter turns, character parsing validation, and save/delete operations.
 
 **Ready when:** the same Discord server can run two campaigns without mixing characters, notes, wallets, encounters, or AI context; secret notes cannot appear in player output; AI failure never loses a user-saved note.
 
-### Phase 1 — Build a data-driven divination studio
+### Phase 1 — Build a data-driven divination studio (core delivered)
 
 Keep `/divine` quick for a one-card reading, and make richer readings use reusable spread definitions rather than special-case prompt branches.
 
@@ -63,7 +134,7 @@ Reuse the persona registry for voice. Keep persona choice separate from the spre
 
 **Ready when:** all spread positions render completely; the same seed reproduces the same cards, reversals, and voice; the model receives the exact position meanings and cannot silently omit cards; responses consistently distinguish symbolic interpretation from fact or certainty.
 
-### Phase 2 — Give campaigns durable, source-backed memory
+### Phase 2 — Give campaigns durable, source-backed memory (next after Milestone 1)
 
 - Turn journal notes into source-backed campaign facts with stable references, dates, authors, confidence/status (established, rumor, theory, unresolved), and visibility. Add named entities for NPCs, places, factions, quests, and objects, with links to the entries that introduced or changed them.
 - Replace the single manually refreshed big-picture text with layered memory: a compact campaign overview, active threads, entity summaries, and recent-session context. Each summary should record which source entries it covers and become stale automatically when those entries change.
@@ -73,7 +144,7 @@ Reuse the persona registry for voice. Keep persona choice separate from the spre
 
 **Ready when:** campaign questions cite the original note or entity; corrections flow through summaries; generated material can be reviewed and changed before it becomes shared canon.
 
-### Phase 3 — Make a useful session loop for everyone
+### Phase 3 — Make a useful session loop for everyone (minimal loop delivered; Milestone 3 extends it)
 
 Add a session lifecycle that connects current commands instead of making the group remember a set of separate tools.
 
@@ -110,10 +181,10 @@ Add a session lifecycle that connects current commands instead of making the gro
 - **Reliability:** AI/provider outages leave deterministic commands and saved records working; queues and user-facing errors remain understandable; command and migration coverage grows with each data feature.
 - **Adoption:** ask groups for opt-in feedback after real sessions. Prefer “did this save time or preserve something useful?” over collecting raw channel activity.
 
-## Recommended first three deliverables
+## Original first three deliverables
 
 1. Campaign create/select plus a visibility and DM-role model.
 2. A three-card reading and a decision spread built from shared spread data, with seed and output-shape checks.
 3. A minimal `/session start`, `/session note`, `/session status`, and `/session end` flow backed by attributed session records and a reviewed recap.
 
-These establish a safe scope for campaign intelligence, give the divination feature a clear path beyond one-card readings, and create a useful loop for DMs and players without requiring a large rules engine up front.
+These were delivered in the first execution pass. Start the next pass with Milestone 1’s per-campaign role migration and cross-campaign access test. Then finish lifecycle controls, establish source-backed canon, and make session and encounter history recoverable.

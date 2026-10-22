@@ -25,7 +25,7 @@ function fallbackNarration(total: bigint): string {
 async function narrateDeposit(entries: Array<[DndCurrency, bigint]>, guildId: string): Promise<string> {
   const total = entries.reduce((sum, [, amount]) => sum + amount, 0n);
   try {
-    const response = await getAIService().createChatCompletion([
+    const response = await getAIService().generateText([
       {
         role: 'system',
         content: 'You are the friendly, slightly opinionated keeper of a fantasy adventurers’ bank. Write one short, vivid line reacting to a deposit of coins that may use several denominations. Sound like a Dungeon Master adding flavor at the table: natural, playful, and specific to the size of the handful. Do not repeat amounts, invent fees, change the balance, or use markdown. Keep it under 25 words.'

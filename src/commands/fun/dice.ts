@@ -23,7 +23,7 @@ import {
   SlashCommandBuilder
 } from 'discord.js'
 import { Command } from '../../types/command'
-import { getRandomSecure } from '../../utils/random'
+import { randomInteger } from '../../utils/random'
 
 const diceCommand: Command = {
   data: new SlashCommandBuilder()
@@ -80,7 +80,7 @@ const diceCommand: Command = {
     try {
       const randoms: number[] = []
       for (let i = 0; i < n; i++) {
-        randoms.push(getRandomSecure(min, max))
+        randoms.push(randomInteger(min, max))
       }
 
       // Calculate statistics

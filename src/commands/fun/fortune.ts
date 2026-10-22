@@ -53,11 +53,18 @@ const fortuneCommand: Command = {
 
     try {
       const ai = getAIService();
-      const fortune = await ai.createVisionCompletion(systemPrompt, textPrompt, avatarUrl, {
-        temperature: 1.0,
-        max_tokens: 150,
-        guildId: interaction.guildId
-      });
+      const fortune = await ai.generateText(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: textPrompt }
+        ],
+        {
+          temperature: 1.0,
+          max_tokens: 150,
+          guildId: interaction.guildId
+        },
+        avatarUrl
+      );
 
       if (!fortune?.trim()) throw new Error('Empty AI response');
 

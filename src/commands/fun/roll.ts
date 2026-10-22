@@ -19,7 +19,7 @@
 
 import { ChatInputCommandInteraction, Client, SlashCommandBuilder } from 'discord.js';
 import { Command } from '../../types/command';
-import { rollDieSecure } from '../../utils/random';
+import { rollDie } from '../../utils/random';
 
 const rollCommand: Command = {
   data: new SlashCommandBuilder()
@@ -58,7 +58,7 @@ const rollCommand: Command = {
 
       const rolls: number[] = [];
       for (let i = 0; i < numDice; i++) {
-        rolls.push(rollDieSecure(numSides));
+        rolls.push(rollDie(numSides));
       }
 
       const total = rolls.reduce((a, b) => a + b, 0);

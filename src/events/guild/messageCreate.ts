@@ -15,16 +15,15 @@ const messageCreateEvent: Event = {
     try {
       await prisma.$transaction(async transaction => {
         await lockGuildUserHistory(transaction, guildId, message.author.id);
-        const optOut = await transaction.guildMessageHistoryOptOut.findUnique({
+        const consent = await transaction.guildMessageHistoryConsent.findUnique({
           where: {
             guildId_discordUserId: {
               guildId,
               discordUserId: message.author.id
             }
-          },
-          select: { discordUserId: true }
+          }
         });
-        if (optOut) return;
+        if (!consent) return;
 
         const displayName = message.member?.displayName ?? message.author.displayName;
         const avatarUrl = message.member?.displayAvatarURL({ size: 1024 }) ??

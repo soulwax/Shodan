@@ -91,11 +91,18 @@ The playful compatibility score is ${score}/100. ${nameA}'s avatar is attached, 
 
     try {
       const ai = getAIService();
-      const commentary = await ai.createVisionCompletion(systemPrompt, textPrompt, avatarA, {
-        temperature: 0.95,
-        max_tokens: 180,
-        guildId: interaction.guildId
-      });
+      const commentary = await ai.generateText(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: textPrompt }
+        ],
+        {
+          temperature: 0.95,
+          max_tokens: 180,
+          guildId: interaction.guildId
+        },
+        avatarA
+      );
 
       if (!commentary) throw new Error('Empty response');
 

@@ -1,9 +1,10 @@
 const fs = require('fs');
 const crypto = require('crypto');
+const { randomBytes } = require('./random');
 
 // Generate a key
-const key = crypto.randomBytes(32);
-const iv = crypto.randomBytes(16);
+const key = randomBytes(32);
+const iv = randomBytes(16);
 
 // Read .env file
 const envContent = fs.readFileSync('.env', 'utf8');

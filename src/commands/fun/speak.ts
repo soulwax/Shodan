@@ -48,25 +48,25 @@ const speakCommand: Command = {
 
     try {
       const ai = getAIService();
-      const spokenText = await ai.createOpenAICompletion([
+      const spokenText = await ai.generateText([
         {
           role: 'system',
           content: 'Write a short spoken line based on the user request. Return only the words to be spoken, with no stage directions, labels, or quotation marks. Keep it under 350 characters.'
         },
         { role: 'user', content: prompt }
-      ], { guildId: interaction.guildId, max_tokens: 180 });
+      ], { provider: 'openai', guildId: interaction.guildId, max_tokens: 180, dissasociation: 'server' });
 
       if (!spokenText?.trim()) throw new Error('Luna returned an empty spoken line');
-      const audioTitle = await ai.createOpenAICompletion([
+      const audioTitle = await ai.generateText([
         {
           role: 'system',
           content: 'Create a short, funny title for an audio filename that describes the overall situation in the user request, not just the exact spoken line. Use 2 to 5 words. Return only the title, with no quotes, punctuation, or file extension.'
         },
         { role: 'user', content: prompt }
-      ], { guildId: interaction.guildId, max_tokens: 40 });
+      ], { provider: 'openai', guildId: interaction.guildId, max_tokens: 40, dissasociation: 'server' });
 
       if (!audioTitle?.trim()) throw new Error('Luna returned an empty audio filename title');
-      const audio = await ai.generateSpeech(spokenText.trim(), voice);
+      const audio = await ai.generateSpeech(spokenText.trim(), voice, interaction.guildId);
       await interaction.editReply({
         files: [new AttachmentBuilder(audio, { name: makeAudioFilename(audioTitle.trim()) })]
       });

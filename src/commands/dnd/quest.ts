@@ -49,7 +49,7 @@ const questCommand: Command = {
       const idea =
         interaction.options.getString('idea')?.trim() ||
         'Surprise the party with a fresh lead.'
-      const result = await getAIService().createChatCompletion(
+      const result = await getAIService().generateText(
         [
           {
             role: 'system',

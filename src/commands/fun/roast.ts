@@ -69,11 +69,18 @@ const roastCommand: Command = {
 
     try {
       const ai = getAIService();
-      const roast = await ai.createVisionCompletion(systemPrompt, textPrompt, avatarUrl, {
-        temperature: 1.0,
-        max_tokens: 200,
-        guildId: interaction.guildId
-      });
+      const roast = await ai.generateText(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: textPrompt }
+        ],
+        {
+          temperature: 1.0,
+          max_tokens: 200,
+          guildId: interaction.guildId
+        },
+        avatarUrl
+      );
 
       if (!roast?.trim()) throw new Error('Empty AI response');
 

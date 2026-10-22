@@ -23,11 +23,13 @@ export async function narrateImage(imageUrl: string, style: keyof typeof styles 
 
 Write 2–4 natural sentences. Point out concrete things that are actually visible, then add a playful observation or tiny story. Keep it light and conversational, like a message someone would enjoy getting in a group chat. No intro, headings, lists, hashtags, or forced catchphrase. Don't identify people, guess personal traits or emotions, or claim anything about the scene that the image doesn't show.`;
   const textPrompt = 'Give this image a short, entertaining narration. Stick to what you can actually see.';
-  const narration = await getAIService().createVisionCompletion(
-    systemPrompt,
-    textPrompt,
-    imageUrl,
-    { temperature: 0.95, max_tokens: 220, guildId }
+  const narration = await getAIService().generateText(
+    [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: textPrompt }
+    ],
+    { temperature: 0.95, max_tokens: 220, guildId },
+    imageUrl
   );
   if (!narration?.trim()) throw new Error('Empty AI response');
   return narration.trim();

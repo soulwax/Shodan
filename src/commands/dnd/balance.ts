@@ -19,7 +19,7 @@ const currencies = [DndCurrency.CP, DndCurrency.SP, DndCurrency.GP, DndCurrency.
 
 async function narrateVault(entries: string[], guildId: string): Promise<string> {
   try {
-    const response = await getAIService().createChatCompletion([
+    const response = await getAIService().generateText([
       {
         role: 'system',
         content: 'You are a fantasy bankkeeper giving a quick, warm update about an adventurer’s vault. In one short line, describe its feel based on the mix of coins. Be playful and grounded, not grandiose. Do not repeat the amounts or suggest the money has changed. No markdown. Under 20 words.'

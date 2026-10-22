@@ -30,11 +30,11 @@ async function saveMemberProfile(
 ): Promise<string | null> {
   return prisma.$transaction(async transaction => {
     await lockGuildUserHistory(transaction, guildId, discordUserId);
-    const optOut = await transaction.guildMessageHistoryOptOut.findUnique({
+    const consent = await transaction.guildMessageHistoryConsent.findUnique({
       where: { guildId_discordUserId: { guildId, discordUserId } },
-      select: { discordUserId: true }
+      select: { backfillOptedInAt: true }
     });
-    if (optOut) return null;
+    if (!consent?.backfillOptedInAt) return null;
 
     const history = await transaction.userMessageHistory.upsert({
       where: { guildId_discordUserId: { guildId, discordUserId } },
@@ -116,14 +116,18 @@ async function initializeGuild(client: Client, guildId: string): Promise<void> {
           await lockGuildUserHistory(transaction, guild.id, userId);
         }
 
-        const optOuts = authorIds.length
-          ? await transaction.guildMessageHistoryOptOut.findMany({
-              where: { guildId: guild.id, discordUserId: { in: authorIds } },
+        const consents = authorIds.length
+          ? await transaction.guildMessageHistoryConsent.findMany({
+              where: {
+                guildId: guild.id,
+                discordUserId: { in: authorIds },
+                backfillOptedInAt: { not: null }
+              },
               select: { discordUserId: true }
             })
           : [];
-        const optedOutIds = new Set(optOuts.map(optOut => optOut.discordUserId));
-        const activeMessages = pageMessages.filter(message => !optedOutIds.has(message.author.id));
+        const backfillConsentedIds = new Set(consents.map(consent => consent.discordUserId));
+        const activeMessages = pageMessages.filter(message => backfillConsentedIds.has(message.author.id));
         const historyIds = new Map<string, string>();
 
         for (const message of activeMessages) {
@@ -175,7 +179,7 @@ async function initializeGuild(client: Client, guildId: string): Promise<void> {
   }
 
   logger.info(
-    `Initialized profiles for ${initializedProfiles} current members in ${guild.name}; saved ${totalMessages} new messages and skipped ${skippedMessages} bot, opted-out, or already saved messages`
+    `Initialized profiles for ${initializedProfiles} members who explicitly opted in to backfill in ${guild.name}; saved ${totalMessages} messages and skipped ${skippedMessages} bot, non-consenting, or already saved messages`
   );
 }
 

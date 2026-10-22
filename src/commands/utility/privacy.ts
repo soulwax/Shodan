@@ -7,7 +7,7 @@ import { logger } from '../../utils/logger';
 const privacyCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('privacy')
-    .setDescription('Manage the message history Shodan stores for you in this server.')
+    .setDescription('Choose whether Shodan stores message history for you in this server.')
     .addSubcommand(command => command
       .setName('status')
       .setDescription('Check your message history setting and saved message count.'))
@@ -16,7 +16,10 @@ const privacyCommand: Command = {
       .setDescription('Stop storing your future messages and delete your saved history here.'))
     .addSubcommand(command => command
       .setName('history-on')
-      .setDescription('Allow Shodan to store future messages in this server again.')),
+      .setDescription('Opt in to storing future messages in this server.'))
+    .addSubcommand(command => command
+      .setName('history-backfill')
+      .setDescription('Separately opt in to importing your older accessible posts.')),
   category: 'utility',
   cooldown: 5,
 
@@ -36,8 +39,8 @@ const privacyCommand: Command = {
 
     try {
       if (action === 'status') {
-        const [optOut, history] = await Promise.all([
-          prisma.guildMessageHistoryOptOut.findUnique({
+        const [consent, history] = await Promise.all([
+          prisma.guildMessageHistoryConsent.findUnique({
             where: { guildId_discordUserId: { guildId, discordUserId } }
           }),
           prisma.userMessageHistory.findUnique({
@@ -46,19 +49,22 @@ const privacyCommand: Command = {
           })
         ]);
 
-        await interaction.editReply(optOut
-          ? 'Your message history is **off** for this server. Saved messages and your profile were deleted; I retain only this opt-out flag so future messages stay out of history. Use `/privacy history-on` to resume collection.'
-          : `Your message history is **on** for this server. Shodan has ${history?._count.messages ?? 0} saved message${history?._count.messages === 1 ? '' : 's'} for you. Use /privacy history-off to stop collection and delete them.`);
+        if (!consent) {
+          await interaction.editReply('Your message history is **off** for this server. Shodan stores nothing unless you opt in with `/privacy history-on`. Use `/privacy history-backfill` separately if you also want older accessible posts imported.');
+          return;
+        }
+        const backfillText = consent.backfillOptedInAt
+          ? 'may be imported by the server history initializer'
+          : 'are not included; use `/privacy history-backfill` to opt in separately';
+        await interaction.editReply(`Your message history is **on** for future messages in this server. Shodan has ${history?._count.messages ?? 0} saved message${history?._count.messages === 1 ? '' : 's'} for you. Older posts ${backfillText}. Use /privacy history-off to stop collection and delete your saved history.`);
         return;
       }
 
       if (action === 'history-off') {
         const deletedMessages = await prisma.$transaction(async transaction => {
           await lockGuildUserHistory(transaction, guildId, discordUserId);
-          await transaction.guildMessageHistoryOptOut.upsert({
-            where: { guildId_discordUserId: { guildId, discordUserId } },
-            create: { guildId, discordUserId },
-            update: { optedOutAt: new Date() }
+          await transaction.guildMessageHistoryConsent.deleteMany({
+            where: { guildId, discordUserId }
           });
 
           const history = await transaction.userMessageHistory.findUnique({
@@ -75,13 +81,38 @@ const privacyCommand: Command = {
         return;
       }
 
-      await prisma.$transaction(async transaction => {
-        await lockGuildUserHistory(transaction, guildId, discordUserId);
-        await transaction.guildMessageHistoryOptOut.deleteMany({
-          where: { guildId, discordUserId }
+      if (action === 'history-on') {
+        await prisma.$transaction(async transaction => {
+          await lockGuildUserHistory(transaction, guildId, discordUserId);
+          await transaction.guildMessageHistoryConsent.upsert({
+            where: { guildId_discordUserId: { guildId, discordUserId } },
+            create: { guildId, discordUserId },
+            update: {}
+          });
         });
+        await interaction.editReply('You opted in to saving **future** messages in this server. Older messages are not imported unless you separately use `/privacy history-backfill`. Use `/privacy history-off` to revoke consent and delete saved history.');
+        return;
+      }
+
+      const backfillStatus = await prisma.$transaction(async transaction => {
+        await lockGuildUserHistory(transaction, guildId, discordUserId);
+        const consent = await transaction.guildMessageHistoryConsent.findUnique({
+          where: { guildId_discordUserId: { guildId, discordUserId } },
+          select: { backfillOptedInAt: true }
+        });
+        if (!consent) return 'history-off';
+        if (consent.backfillOptedInAt) return 'already-enabled';
+        await transaction.guildMessageHistoryConsent.update({
+          where: { guildId_discordUserId: { guildId, discordUserId } },
+          data: { backfillOptedInAt: new Date() }
+        });
+        return 'enabled';
       });
-      await interaction.editReply('Message history is now **on** for this server. New messages may be saved from now on; previously deleted messages will not return.');
+      await interaction.editReply(backfillStatus === 'history-off'
+        ? 'First opt in to future message history with `/privacy history-on`. Older posts require a separate opt-in.'
+        : backfillStatus === 'already-enabled'
+          ? 'You have already opted in to importing older accessible posts. A server manager can run the history initializer to import them.'
+          : 'You opted in to importing older accessible posts in this server. A server manager can run the history initializer. Use `/privacy history-off` to revoke both consents and delete your saved history.');
     } catch (error) {
       logger.error('[Privacy] Failed to read or update message history preference:', error);
       await interaction.editReply('I couldn’t update your message history setting. Please try again.');

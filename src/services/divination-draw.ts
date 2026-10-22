@@ -1,4 +1,4 @@
-import { randomInt } from 'node:crypto';
+import { randomIndex } from '../utils/random'
 
 export interface DivinationReplaySeed {
   spreadId: string;
@@ -14,7 +14,7 @@ export interface DivinationReplaySeed {
 export function drawUniqueCardIndices(
   deckSize: number,
   drawCount: number,
-  chooseIndex: (upperExclusive: number) => number = upperExclusive => randomInt(0, upperExclusive)
+  chooseIndex: (upperExclusive: number) => number = randomIndex
 ): number[] {
   if (!Number.isInteger(deckSize) || !Number.isInteger(drawCount) || deckSize < 1 || drawCount < 1 || drawCount > deckSize) {
     throw new Error('The spread needs between one card and the number of cards in the deck.');
@@ -72,7 +72,8 @@ export function parseDivinationReplaySeed(
   if (!Number.isFinite(temperature) || temperature < 0 || temperature > 2 || !/^(0|1)$/.test(wholesomeText)) {
     throw new Error('That seed has invalid reading settings.');
   }
-  if (!Number.isInteger(meanness) || meanness < 1 || meanness > 5 || !Number.isInteger(voiceIndex) || voiceIndex < 0 || voiceIndex > 2) {
+  // Discord string choices are capped at 25, so valid zero-based voice indexes are 0–24.
+  if (!Number.isInteger(meanness) || meanness < 1 || meanness > 5 || !Number.isInteger(voiceIndex) || voiceIndex < 0 || voiceIndex > 24) {
     throw new Error('That seed has an invalid voice setting.');
   }
   if (!/^[01]+$/.test(reversedText) || reversedText.length !== cardIndices.length || cardIndices.length !== spread.positionCount) {
