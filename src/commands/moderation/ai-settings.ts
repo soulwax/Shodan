@@ -101,10 +101,10 @@ const aiSettingsCommand: Command = {
         .setMaxValue(5)))
     .addSubcommand(command => command
       .setName('divine-personality')
-      .setDescription('Set or inspect this server’s voice for non-wholesome /divine readings.')
+      .setDescription('Set or inspect this server’s character for /divine, /speak, and /image.')
       .addStringOption(option => option
         .setName('voice')
-        .setDescription('Choose a voice to save, or leave blank to view this server’s saved voice.')
+        .setDescription('Choose a character, or randomize /divine readings. /speak and /image use saved characters only.')
         .setRequired(false)
         .addChoices(
           { name: 'Random each reading', value: RANDOM_PERSONA_ID },
