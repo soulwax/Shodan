@@ -16,14 +16,19 @@ The test for a feature is simple: does it help someone at the table in a few sec
 
 ## What exists today
 
-- D&D data is scoped to a server and stored in PostgreSQL. The schema can represent multiple campaigns, but [`getMainCampaign`](../src/services/dnd-campaign.ts) and current commands always resolve the server's `Main Campaign`; there is no campaign create/select workflow yet.
+- D&D data is stored in PostgreSQL and scoped to a campaign. `/campaign` can create, list, rename, archive, restore, and set the default campaign; channels and their threads can be bound to a campaign. D&D commands resolve the channel campaign first, then the server default. See [`dnd-campaign.ts`](../src/services/dnd-campaign.ts) and [`campaign.ts`](../src/commands/dnd/campaign.ts).
 - Players can import a searchable PDF, read and ask about their own sheet, save character memories, edit a few fields, and track HP. Sheet data is AI-extracted JSON, and structured spell, equipment, condition, and resource tracking is not yet present. See [`character.ts`](../src/commands/dnd/character.ts) and the [`DndCharacter` model](../prisma/schema.prisma).
-- The shared journal supports typed notes, source-post capture, editing, search, citations, per-entry interpretations, and a stored big-picture summary. [`story.ts`](../src/commands/dnd/story.ts) uses keyword matching plus recent-note fallback for questions. The summary covers at most the latest 100 entries and must be rebuilt after changes.
+- The journal supports typed notes, source-post capture, editing, search, citations, per-entry interpretations, and a stored big-picture summary. Notes have shared, DM-only, or author-private visibility; player-facing AI context is built from shared notes only, and journal responses are ephemeral. [`story.ts`](../src/commands/dnd/story.ts) still uses keyword matching plus recent-note fallback for questions. The summary covers at most the latest 100 shared entries and must be rebuilt after changes.
 - Encounters support initiative, a shared roster, HP, turns, twists, and an end recap. The encounter stores current turn order as JSON with a revision check, but it does not retain a structured history of turns, actions, damage, or outcomes. See [`encounter.ts`](../src/commands/dnd/encounter.ts) and [`dnd-encounter.ts`](../src/services/dnd-encounter.ts).
 - `/quest`, `/npc`, and encounters can use the campaign journal as context. Generated quests and NPCs are saved as free-text notes when requested; they do not yet have stable identities or update histories.
-- `/divine` currently draws one Rider–Waite card with a random reversal and a short AI reflection. Named, level-aware voices live in the reusable [`personas.ts`](../src/data/personas.ts) registry.
+- `/divine` offers one-card, three-card, past–present–possible-direction, yes/no, decision, relationship, and Celtic Cross spreads. Draws are without replacement, each position is shown, and replay seeds preserve the draw and named voice. Readings are ephemeral. Named, level-aware voices live in the reusable [`personas.ts`](../src/data/personas.ts) registry.
+- `/session` starts a campaign session, records attributed notes with visibility, shows current session and encounter state, and drafts a recap from shared notes. A DM must review and publish the recap before it becomes a shared journal entry. See [`dnd-session.ts`](../src/services/dnd-session.ts).
 - The shared AI service already has provider fallback, rate limiting, bounded concurrency, and retry handling. The test suite is currently narrow: its only test file covers D&D currency parsing.
 - The README documents per-user message-history capture, opt-out controls, and the content sent to AI providers. These controls should remain visible as campaign features grow.
+
+### Execution progress
+
+The first execution pass has delivered campaign/channel selection and note visibility, the data-driven spread engine with replayable multi-card readings, and a minimal session lifecycle with a DM-reviewed recap. Remaining Phase 0 work includes campaign export/deletion and broader automated coverage; later phases still include entity-based campaign memory, structured encounter event history, and expanded player actions.
 
 ## Roadmap
 

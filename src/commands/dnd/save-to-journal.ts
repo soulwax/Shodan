@@ -9,7 +9,7 @@ import {
   TextInputStyle
 } from 'discord.js';
 import { DndStoryKind } from '@prisma/client';
-import { getMainCampaign } from '../../services/dnd-campaign';
+import { campaignChannelScope, getCampaignContext } from '../../services/dnd-campaign';
 import { createCampaignStoryEntry } from '../../services/dnd-context';
 import { MessageContextCommand } from '../../types/command';
 import { logger } from '../../utils/logger';
@@ -55,8 +55,9 @@ const saveToJournalCommand: MessageContextCommand = {
       .setMaxLength(MAX_NOTE_LENGTH)
       .setRequired(true)
       .setValue(note);
+    const parentChannelId = message.channel.isThread() ? message.channel.parentId : null;
     const modal = new ModalBuilder()
-      .setCustomId(`${JOURNAL_CAPTURE_MODAL_PREFIX}${message.guildId}:${message.channelId}:${message.id}`)
+      .setCustomId(`${JOURNAL_CAPTURE_MODAL_PREFIX}${message.guildId}:${message.channelId}:${parentChannelId ?? '-'}:${message.id}`)
       .setTitle('Save to campaign journal')
       .addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
 
@@ -72,9 +73,10 @@ export async function handleJournalCaptureModal(interaction: ModalSubmitInteract
   await interaction.deferReply({ ephemeral: true });
 
   try {
-    const [guildId, channelId, messageId] = interaction.customId
-      .slice(JOURNAL_CAPTURE_MODAL_PREFIX.length)
-      .split(':');
+    const values = interaction.customId.slice(JOURNAL_CAPTURE_MODAL_PREFIX.length).split(':');
+    const [guildId, channelId] = values;
+    const parentChannelId = values.length === 4 && values[2] !== '-' ? values[2] : null;
+    const messageId = values.length === 4 ? values[3] : values[2];
     if (!guildId || !channelId || !messageId || interaction.guildId !== guildId) {
       await interaction.editReply('I couldn’t match that note to its server post. Open the post menu again and try once more.');
       return;
@@ -87,7 +89,11 @@ export async function handleJournalCaptureModal(interaction: ModalSubmitInteract
     }
 
     const guildName = interaction.guild?.name ?? (await interaction.client.guilds.fetch(guildId)).name;
-    const campaign = await getMainCampaign(guildId, guildName);
+    const campaign = (await getCampaignContext(
+      guildId,
+      guildName,
+      campaignChannelScope(channelId, parentChannelId)
+    )).campaign;
     const sourceUrl = `https://discord.com/channels/${guildId}/${channelId}/${messageId}`;
     const entry = await createCampaignStoryEntry({
       campaignId: campaign.id,

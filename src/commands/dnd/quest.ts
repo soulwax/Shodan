@@ -4,7 +4,7 @@ import {
   SlashCommandBuilder
 } from 'discord.js'
 import { getAIService } from '../../services/ai'
-import { getMainCampaign } from '../../services/dnd-campaign'
+import { campaignChannelScope, getCampaignContext } from '../../services/dnd-campaign'
 import { createCampaignStoryEntry, getRecentStory } from '../../services/dnd-context'
 import { Command } from '../../types/command'
 import { logger } from '../../utils/logger'
@@ -39,10 +39,12 @@ const questCommand: Command = {
     }
     await interaction.deferReply()
     try {
-      const campaign = await getMainCampaign(
+      const channel = interaction.channel
+      const campaign = (await getCampaignContext(
         interaction.guild.id,
-        interaction.guild.name
-      )
+        interaction.guild.name,
+        campaignChannelScope(interaction.channelId, channel?.isThread() ? channel.parentId : null)
+      )).campaign
       const story = await getRecentStory(campaign.id, 12)
       const idea =
         interaction.options.getString('idea')?.trim() ||

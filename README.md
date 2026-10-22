@@ -1,6 +1,10 @@
 # Shodan
 
-Shodan is a Discord bot for D&D campaign support, AI assisted prompts, tarot readings, server moderation, and small group chat utilities. D&D characters, campaign journals, encounters, wallets, and transaction history are stored in PostgreSQL and scoped to each Discord server's Main Campaign.
+[**Invite Shodan to your Discord server**](https://discord.com/oauth2/authorize?client_id=920659636640694293&permissions=274879081476&scope=bot%20applications.commands)
+
+For `/members` and message-history features, enable **Server Members Intent** and **Message Content Intent** under **Bot → Privileged Gateway Intents** in the Discord Developer Portal.
+
+Shodan is a Discord bot for D&D campaign support, AI assisted prompts, tarot readings, server moderation, and small group chat utilities. D&D characters, campaign journals, encounters, wallets, and transaction history are stored in PostgreSQL and scoped to a server campaign. Servers can use a default campaign and bind other campaigns to channels.
 
 See the [North Star plan](docs/north-star-plan.md) for the product direction and phased roadmap.
 
@@ -8,8 +12,10 @@ See the [North Star plan](docs/north-star-plan.md) for the product direction and
 
 ### D&D campaign tools
 
+- **Campaigns and access:** `/campaign create`, `list`, `show`, `default`, `bind`, `unbind`, `rename`, `archive`, and `restore` organize campaigns. Bind a campaign to a text or forum channel to use it there and in its threads. `/campaign dm-role` grants a server role access to DM-only notes; server managers retain access. Journal and session notes can be shared, DM-only, or private to their author.
 - **Characters:** import a searchable PDF with `/character init`, read the saved sheet, ask AI questions, keep character memories, edit fields, and track HP with `/character hp`.
-- **Campaign journal:** add typed notes, browse pages, search, show, edit, and delete entries with `/story`. `/story ask` answers from cited journal evidence. `/story interpret` creates a compact AI memory for older notes; `/story big-picture` combines and stores those memories as the campaign overview, which D&D AI commands reuse to stay consistent and reduce repeated context. New, edited, or deleted notes mark the overview stale; rebuild it with `/story big-picture`.
+- **Campaign journal:** add typed notes, browse pages, search, show, edit, and delete entries with `/story`. `/story ask` answers from cited journal evidence. `/story interpret` creates a compact AI memory for older notes; `/story big-picture` combines and stores those memories as the campaign overview, which D&D AI commands reuse to stay consistent and reduce repeated context. New, edited, or deleted notes mark the overview stale; rebuild it with `/story big-picture`. Shared AI context uses shared notes only, and journal responses are private to the person who requested them.
+- **Session loop:** DMs use `/session start` to open a session, everyone can add attributed `/session note` entries, and `/session status` shows notes and the active encounter. `/session end` drafts a recap from shared notes; `/session draft` can retrieve it later, and the DM reviews and publishes the edited recap with `/session publish` before it enters the shared journal.
 - **Encounter tracker:** `/encounter start` creates an AI written scene; players use `/encounter join` to roll a d20 with their saved Dexterity modifier and enter the initiative order. DMs use `/encounter add` for foes, then advance turns, track HP, get a campaign aware twist, and save an AI recap when the encounter ends.
 - **Campaign ideas:** `/quest` and `/npc` generate material from recent journal notes. Set `save:true` to keep it in the journal.
 - **Adventurer bank:** `/store coins:20sp 10gp 5e` and `/withdraw coins:20sp 10gp 5e` support copper (`cp`), silver (`sp`), gold (`gp`), electrum (`e`), and platinum (`pc`). Repeated denominations are combined. `/balance` shows all five balances.
@@ -17,7 +23,7 @@ See the [North Star plan](docs/north-star-plan.md) for the product direction and
 
 ### AI, tarot, and fun
 
-- `/divine` draws a tarot card and offers a reading. Tarot readings are delivered in the moment and are not stored against a user.
+- `/divine` supports one-card, three-card, past–present–possible-direction, yes/no leaning, decision, relationship, and Celtic Cross spreads. Draws are without replacement, every position is labeled, and replay seeds reproduce the cards, reversals, and voice. Readings are ephemeral and are not stored against a user.
 - `/describe` gives an uploaded image a short narration in a chosen style. To use an image already posted in chat, right-click the post and choose **Apps → Describe image**.
 - `/image` uses Luna to refine a prompt, then generates an image with OpenAI's `gpt-image-2.5-flare`; attach `base_image` to edit an existing image. **Apps → Remix image** uses an image from a selected post.
 - `/speak` uses Luna to write a short line and a funny situation-based filename, then OpenAI text-to-speech creates an MP3 voice clip.
@@ -99,6 +105,7 @@ Slash commands are registered when the bot starts. For local development, use `p
 | `pnpm build` | Compile TypeScript into `dist/` |
 | `pnpm lint` | Check TypeScript files with ESLint |
 | `pnpm test:dnd-currency` | Build and run coin notation edge-case tests |
+| `pnpm test:north-star` | Build and check campaign scope, journal visibility, and divination replay behavior |
 | `pnpm prisma:migrate:deploy` | Apply committed database migrations |
 | `pnpm pm2:start` | Start the production process with PM2 |
 | `pnpm go` | Install, migrate, build, and restart PM2 |

@@ -48,6 +48,7 @@ model DndServer {
   aiReasoningEffort  String        @default("low")
   divineMeanness     Int           @default(2)
   divinePersonality  String        @default("random")
+  dmRoleId           String?
   campaigns          DndCampaign[]
   writingStyles      UserWritingStyle[]
   createdAt          DateTime      @default(now())
@@ -109,11 +110,14 @@ model DndCampaign {
   name         String
   gameSystem   String           @default("D&D 5e")
   isDefault    Boolean          @default(false)
+  isArchived   Boolean          @default(false)
   server       DndServer        @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  channels     DndCampaignChannel[]
   wallets      DndWallet[]
   characters   DndCharacter[]
   storyTidbits DndStoryTidbit[]
   encounters   DndEncounter[]
+  sessions     DndSession[]
   storyBigPicture String?      @db.Text
   storyBigPictureUpdatedAt DateTime?
   createdAt    DateTime         @default(now())
@@ -121,6 +125,17 @@ model DndCampaign {
 
   @@unique([serverId, name])
   @@index([serverId])
+}
+
+model DndCampaignChannel {
+  id               String      @id @default(uuid())
+  discordChannelId String      @unique
+  campaignId       String
+  campaign         DndCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([campaignId])
 }
 
 model DndCharacter {
@@ -143,6 +158,7 @@ model DndStoryTidbit {
   campaignId    String
   discordUserId String
   kind          DndStoryKind @default(EVENT)
+  visibility    DndStoryVisibility @default(SHARED)
   content       String      @db.Text
   interpretation String?    @db.Text
   interpretedAt DateTime?
@@ -159,6 +175,47 @@ enum DndStoryKind {
   CLUE
   QUEST
   LORE
+}
+
+enum DndStoryVisibility {
+  SHARED
+  DM_ONLY
+  PRIVATE
+}
+
+enum DndSessionStatus {
+  ACTIVE
+  REVIEWING
+  ENDED
+}
+
+model DndSession {
+  id                       String           @id @default(uuid())
+  campaignId               String
+  title                    String
+  agenda                   String?          @db.Text
+  status                   DndSessionStatus @default(ACTIVE)
+  recapDraft               String?          @db.Text
+  startedByDiscordUserId   String
+  createdAt                DateTime         @default(now())
+  endedAt                  DateTime?
+  campaign                 DndCampaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  notes                    DndSessionNote[]
+
+  @@index([campaignId, status, createdAt])
+}
+
+model DndSessionNote {
+  id            String             @id @default(uuid())
+  sessionId     String
+  discordUserId String
+  visibility    DndStoryVisibility @default(SHARED)
+  content       String             @db.Text
+  createdAt     DateTime           @default(now())
+  session       DndSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@index([sessionId, visibility, discordUserId])
 }
 
 model DndEncounter {

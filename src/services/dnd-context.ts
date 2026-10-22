@@ -1,12 +1,14 @@
-import { DndStoryKind } from '@prisma/client';
+import { DndStoryKind, DndStoryVisibility } from '@prisma/client';
 import { getAIService } from './ai';
 import { prisma } from './prisma';
 import { logger } from '../utils/logger';
+export { visibleStoryWhere } from '../utils/dnd-visibility';
 
 export type NewCampaignStoryEntry = {
   campaignId: string;
   discordUserId: string;
   kind?: DndStoryKind;
+  visibility?: DndStoryVisibility;
   content: string;
 };
 
@@ -24,7 +26,7 @@ export async function interpretCampaignStoryEntry(
     const [campaign, priorEntries] = await Promise.all([
       prisma.dndCampaign.findUnique({ where: { id: campaignId }, select: { storyBigPicture: true } }),
       prisma.dndStoryTidbit.findMany({
-        where: { campaignId, interpretation: { not: null }, ...(excludeEntryId ? { id: { not: excludeEntryId } } : {}) },
+        where: { campaignId, visibility: DndStoryVisibility.SHARED, interpretation: { not: null }, ...(excludeEntryId ? { id: { not: excludeEntryId } } : {}) },
         orderBy: { createdAt: 'desc' },
         take: 12,
         select: { id: true, kind: true, interpretation: true, content: true }
@@ -59,6 +61,7 @@ export async function createCampaignStoryEntry(input: NewCampaignStoryEntry) {
       data: {
         ...input,
         kind,
+        visibility: input.visibility ?? DndStoryVisibility.SHARED,
         interpretation,
         interpretedAt: interpretation ? new Date() : null
       }
@@ -71,14 +74,19 @@ export async function createCampaignStoryEntry(input: NewCampaignStoryEntry) {
   });
 }
 
-export async function updateCampaignStoryEntry(campaignId: string, entryId: string, content: string) {
+export async function updateCampaignStoryEntry(
+  campaignId: string,
+  entryId: string,
+  content: string,
+  visibility?: DndStoryVisibility
+) {
   const existing = await prisma.dndStoryTidbit.findFirst({ where: { id: entryId, campaignId } });
   if (!existing) return null;
   const interpretation = await interpretCampaignStoryEntry(campaignId, existing.kind, content, entryId);
   return prisma.$transaction(async transaction => {
     const entry = await transaction.dndStoryTidbit.update({
       where: { id: entryId },
-      data: { content, interpretation, interpretedAt: interpretation ? new Date() : null }
+      data: { content, ...(visibility ? { visibility } : {}), interpretation, interpretedAt: interpretation ? new Date() : null }
     });
     await transaction.dndCampaign.update({
       where: { id: campaignId },
@@ -105,7 +113,7 @@ export async function getRecentStory(campaignId: string, take = 10): Promise<str
   const [campaign, entries] = await Promise.all([
     prisma.dndCampaign.findUnique({ where: { id: campaignId }, select: { storyBigPicture: true } }),
     prisma.dndStoryTidbit.findMany({
-      where: { campaignId },
+      where: { campaignId, visibility: DndStoryVisibility.SHARED },
       orderBy: { createdAt: 'desc' },
       take,
       select: { id: true, kind: true, content: true, interpretation: true }

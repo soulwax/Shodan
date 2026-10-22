@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { getAIService } from '../../services/ai';
-import { getMainCampaign } from '../../services/dnd-campaign';
+import { campaignChannelScope, getCampaignContext } from '../../services/dnd-campaign';
 import { createCampaignStoryEntry, getRecentStory } from '../../services/dnd-context';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
@@ -22,7 +22,12 @@ const npcCommand: Command = {
     }
     await interaction.deferReply();
     try {
-      const campaign = await getMainCampaign(interaction.guild.id, interaction.guild.name);
+      const channel = interaction.channel;
+      const campaign = (await getCampaignContext(
+        interaction.guild.id,
+        interaction.guild.name,
+        campaignChannelScope(interaction.channelId, channel?.isThread() ? channel.parentId : null)
+      )).campaign;
       const story = await getRecentStory(campaign.id, 12);
       const role = interaction.options.getString('role')?.trim() || 'someone the party might meet soon';
       const result = await getAIService().createChatCompletion([

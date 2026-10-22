@@ -8,7 +8,7 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { DndCurrency } from '@prisma/client';
 import { getAIService } from '../../services/ai';
-import { getMainCampaignContext } from '../../services/dnd-campaign';
+import { campaignChannelScope, getCampaignContext } from '../../services/dnd-campaign';
 import { CURRENCIES, formatCoins } from '../../services/dnd-currency';
 import { getWallet, getWalletCurrencies } from '../../services/dnd-wallet';
 import { Command } from '../../types/command';
@@ -49,7 +49,12 @@ const balanceCommand: Command = {
 
     await interaction.deferReply();
     try {
-      const { server, campaign } = await getMainCampaignContext(guild.id, guild.name);
+      const channel = interaction.channel;
+      const { server, campaign } = await getCampaignContext(
+        guild.id,
+        guild.name,
+        campaignChannelScope(interaction.channelId, channel?.isThread() ? channel.parentId : null)
+      );
       const wallet = await getWallet(campaign.id, interaction.user.id);
       const balances = wallet
         ? getWalletCurrencies(wallet, currencies)

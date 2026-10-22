@@ -1,7 +1,7 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { Prisma } from '@prisma/client';
 import { getAIService } from '../../services/ai';
-import { getMainCampaign } from '../../services/dnd-campaign';
+import { campaignChannelScope, getCampaignContext } from '../../services/dnd-campaign';
 import { prisma } from '../../services/prisma';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
@@ -69,7 +69,12 @@ const characterCommand: Command = {
     }
     await interaction.deferReply({ ephemeral: true });
     try {
-      const campaign = await getMainCampaign(interaction.guild.id, interaction.guild.name);
+      const channel = interaction.channel;
+      const campaign = (await getCampaignContext(
+        interaction.guild.id,
+        interaction.guild.name,
+        campaignChannelScope(interaction.channelId, channel?.isThread() ? channel.parentId : null)
+      )).campaign;
       const owner = interaction.user.id;
       const action = interaction.options.getSubcommand();
 

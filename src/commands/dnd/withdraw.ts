@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
-import { getMainCampaign } from '../../services/dnd-campaign';
+import { campaignChannelScope, getCampaignContext } from '../../services/dnd-campaign';
 import { CURRENCIES, coinAmountEntries, formatCoinEntries, formatCoins, parseCoinNotation } from '../../services/dnd-currency';
 import { withdrawCoins } from '../../services/dnd-wallet';
 import { walletCurrencyValue } from '../../services/dnd-wallet-mapping';
@@ -37,7 +37,12 @@ const withdrawCommand: Command = {
     const entries = coinAmountEntries(amounts);
     await interaction.deferReply();
     try {
-      const campaign = await getMainCampaign(guild.id, guild.name);
+      const channel = interaction.channel;
+      const campaign = (await getCampaignContext(
+        guild.id,
+        guild.name,
+        campaignChannelScope(interaction.channelId, channel?.isThread() ? channel.parentId : null)
+      )).campaign;
       const withdrawal = await withdrawCoins({
         campaignId: campaign.id,
         discordUserId: interaction.user.id,

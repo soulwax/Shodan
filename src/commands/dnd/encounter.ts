@@ -2,7 +2,7 @@ import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from '
 import { randomInt } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { getAIService } from '../../services/ai';
-import { getMainCampaign } from '../../services/dnd-campaign';
+import { campaignChannelScope, getCampaignContext } from '../../services/dnd-campaign';
 import { createCampaignStoryEntry, getRecentStory, interpretCampaignStoryEntry } from '../../services/dnd-context';
 import { combatantId, dexterityModifier, EncounterCombatant, formatCombatant, orderedCombatants, readCombatants, toJson } from '../../services/dnd-encounter';
 import { prisma } from '../../services/prisma';
@@ -129,7 +129,12 @@ const encounterCommand: Command = {
     await interaction.deferReply();
     const subcommand = interaction.options.getSubcommand();
     try {
-      const campaign = await getMainCampaign(interaction.guild.id, interaction.guild.name);
+      const channel = interaction.channel;
+      const campaign = (await getCampaignContext(
+        interaction.guild.id,
+        interaction.guild.name,
+        campaignChannelScope(interaction.channelId, channel?.isThread() ? channel.parentId : null)
+      )).campaign;
 
       if (subcommand === 'start') {
         const title = interaction.options.getString('title', true).trim();

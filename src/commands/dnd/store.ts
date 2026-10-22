@@ -8,7 +8,7 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { DndCurrency } from '@prisma/client';
 import { getAIService } from '../../services/ai';
-import { getMainCampaignContext } from '../../services/dnd-campaign';
+import { campaignChannelScope, getCampaignContext } from '../../services/dnd-campaign';
 import { coinAmountEntries, formatCoinEntries, formatCoins, parseCoinNotation } from '../../services/dnd-currency';
 import { depositCoins } from '../../services/dnd-wallet';
 import { walletCurrencyValue } from '../../services/dnd-wallet-mapping';
@@ -72,7 +72,12 @@ const storeCommand: Command = {
     await interaction.deferReply();
 
     try {
-      const { server, campaign } = await getMainCampaignContext(guild.id, guild.name);
+      const channel = interaction.channel;
+      const { server, campaign } = await getCampaignContext(
+        guild.id,
+        guild.name,
+        campaignChannelScope(interaction.channelId, channel?.isThread() ? channel.parentId : null)
+      );
       const narration = server.aiNarrationEnabled ? await narrateDeposit(entries, guild.id) : fallbackNarration(entries.reduce((sum, [, value]) => sum + value, 0n));
       const result = await depositCoins({
         campaignId: campaign.id,
