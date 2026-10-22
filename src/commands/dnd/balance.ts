@@ -13,6 +13,7 @@ import { CURRENCIES, formatCoins } from '../../services/dnd-currency';
 import { getWallet, getWalletCurrencies } from '../../services/dnd-wallet';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
+import { truncateAtBoundary } from '../../utils/text';
 
 const currencies = [DndCurrency.CP, DndCurrency.SP, DndCurrency.GP, DndCurrency.EL, DndCurrency.PC];
 
@@ -25,7 +26,7 @@ async function narrateVault(entries: string[], guildId: string): Promise<string>
       },
       { role: 'user', content: `The vault contains ${entries.join(', ')}. Give the bankkeeper’s one-line observation.` }
     ], { temperature: 0.8, max_tokens: 60, guildId });
-    return response?.trim().slice(0, 250) || 'The ledger is up to date.';
+    return response?.trim() ? truncateAtBoundary(response.trim(), 250) : 'The ledger is up to date.';
   } catch {
     logger.warn('[D&D] AI balance narration unavailable; using the standard line.');
     return 'Every coin is accounted for.';

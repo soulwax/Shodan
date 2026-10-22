@@ -35,6 +35,7 @@ const roastCommand: Command = {
         .setName('topic')
         .setDescription('Any topic you want the joke to circle around? (Optional)')
         .setRequired(false)
+        .setMaxLength(200)
     ),
 
   category: 'fun',

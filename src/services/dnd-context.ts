@@ -43,7 +43,7 @@ export async function interpretCampaignStoryEntry(
         content: `Existing big picture:\n${campaign?.storyBigPicture || '(not built yet)'}\n\nRecent interpreted notes, oldest first:\n${context.join('\n') || '(none)'}\n\nNew entry kind: ${labelKind(kind)}\nNew entry text:\n${content}`
       }
     ], { temperature: 0.2, max_tokens: 180 });
-    return response?.trim().slice(0, 700) || null;
+    return response?.trim() || null;
   } catch (error) {
     logger.warn('[D&D] Could not interpret journal entry; it remains saved without an interpretation.');
     logger.debug('[D&D] Story interpretation error:', error);

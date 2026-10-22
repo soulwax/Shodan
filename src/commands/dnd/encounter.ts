@@ -8,6 +8,7 @@ import { combatantId, dexterityModifier, EncounterCombatant, formatCombatant, or
 import { prisma } from '../../services/prisma';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
+import { truncateAtBoundary } from '../../utils/text';
 
 const MAX_COMBATANTS = 30;
 
@@ -68,7 +69,7 @@ async function generateScene(title: string, idea: string, journal: string[]): Pr
       },
       { role: 'user', content: `Encounter: ${title}\nDM idea: ${idea || '(surprise me)'}\nCampaign notes:\n${journal.length ? journal.map((note, index) => `${index + 1}. ${note}`).join('\n') : '(none)'}` }
     ], { temperature: 0.85, max_tokens: 220 });
-    return result?.trim().slice(0, 900) || `The ${title} begins. Everyone takes a breath and rolls initiative.`;
+    return result?.trim() ? truncateAtBoundary(result.trim(), 900) : `The ${title} begins. Everyone takes a breath and rolls initiative.`;
   } catch {
     return idea || `The ${title} begins. Everyone takes a breath and rolls initiative.`;
   }
@@ -312,14 +313,15 @@ const encounterCommand: Command = {
           }
         ], { temperature: 0.9, max_tokens: 220 });
         if (!result?.trim()) throw new Error('AI returned an empty encounter twist');
-        const twist = result.trim().slice(0, 900);
+        const twist = result.trim();
+        const displayedTwist = truncateAtBoundary(twist, 3900);
         await createCampaignStoryEntry({
           campaignId: campaign.id,
           discordUserId: interaction.user.id,
           kind: 'EVENT',
           content: `Encounter twist (${encounter.title}): ${twist}`
         });
-        await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x8c5b32).setTitle('🌀 A turn in the fight').setDescription(twist).setFooter({ text: 'Saved to the campaign journal.' })] });
+        await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x8c5b32).setTitle('🌀 A turn in the fight').setDescription(displayedTwist).setFooter({ text: 'Saved to the campaign journal.' })] });
         return;
       }
 
@@ -343,7 +345,7 @@ const encounterCommand: Command = {
               content: `Encounter: ${encounter.title}\nScene: ${encounter.scene || '(none)'}\nRound reached: ${encounter.round}\nTracked combatants and remaining HP: ${combatants.map(combatant => `${combatant.name}${combatant.hp === null ? '' : `: ${combatant.hp}/${combatant.maxHp} HP`}`).join('; ') || '(none)'}\nRecent journal context:\n${story.join('\n') || '(empty)'}`
             }
           ], { temperature: 0.4, max_tokens: 300 });
-          recap = result?.trim().slice(0, 1100) || `The encounter “${encounter.title}” ended after round ${encounter.round}. No further outcome was recorded.`;
+          recap = result?.trim() ? truncateAtBoundary(result.trim(), 1100) : `The encounter “${encounter.title}” ended after round ${encounter.round}. No further outcome was recorded.`;
         } catch {
           recap = `The encounter “${encounter.title}” ended after round ${encounter.round}. Tracked remaining HP: ${combatants.map(combatant => `${combatant.name} ${combatant.hp ?? 'untracked'}`).join(', ') || 'none'}.`;
         }

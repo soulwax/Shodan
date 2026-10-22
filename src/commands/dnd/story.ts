@@ -16,6 +16,7 @@ import {
 import { prisma } from '../../services/prisma';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
+import { truncateAtBoundary } from '../../utils/text';
 
 const PAGE_SIZE = 10;
 const BIG_PICTURE_ENTRY_LIMIT = 100;
@@ -55,8 +56,8 @@ function entrySnippet(entry: {
   createdAt: Date;
   discordUserId: string;
 }): string {
-  const content = entry.content.length > 170 ? `${entry.content.slice(0, 167)}…` : entry.content;
-  const interpretation = entry.interpretation ? `\n🧠 ${entry.interpretation.slice(0, 80)}` : '';
+  const content = truncateAtBoundary(entry.content, 170);
+  const interpretation = entry.interpretation ? `\n🧠 ${truncateAtBoundary(entry.interpretation, 80)}` : '';
   return `**[#${entry.id.slice(0, 8)}] ${kindLabel(entry.kind)}** · <t:${Math.floor(entry.createdAt.getTime() / 1000)}:d>\n${content}${interpretation}\nAdded by <@${entry.discordUserId}>`;
 }
 
@@ -87,7 +88,7 @@ async function answerFromJournal(
     }
   ], { temperature: 0.25, max_tokens: 350 });
   if (!response?.trim()) throw new Error('AI returned an empty journal answer');
-  return response.trim().slice(0, 1800);
+  return truncateAtBoundary(response.trim(), 3900);
 }
 
 async function createBigPicture(entries: Array<{
@@ -107,7 +108,7 @@ async function createBigPicture(entries: Array<{
     { role: 'user', content: `Chronological campaign memory:\n${context}` }
   ], { temperature: 0.25, max_tokens: 500 });
   if (!response?.trim()) throw new Error('AI returned an empty campaign big picture');
-  return response.trim().slice(0, 2500);
+  return truncateAtBoundary(response.trim(), 3900);
 }
 
 const storyCommand: Command = {
@@ -216,7 +217,7 @@ const storyCommand: Command = {
         const embed = new EmbedBuilder()
           .setColor(0x586b4d)
           .setTitle(action === 'search' ? `Journal search: ${query}` : `${guild.name} · Campaign journal`)
-          .setDescription(entries.map(entrySnippet).join('\n\n').slice(0, 4000))
+          .setDescription(entries.map(entrySnippet).join('\n\n'))
           .setFooter({ text: `Page ${page}/${totalPages} · ${total} ${kind ? `${kindLabel(kind).toLowerCase()} ` : ''}entries · Use the [#reference] with /story show, edit, or delete.` });
         await interaction.editReply({ embeds: [embed], allowedMentions: { parse: [] } });
         return;
@@ -417,7 +418,7 @@ const storyCommand: Command = {
         const embed = new EmbedBuilder()
           .setColor(0x586b4d)
           .setTitle(`${guild.name} · Campaign recap`)
-          .setDescription(recap.trim().slice(0, 1800))
+          .setDescription(truncateAtBoundary(recap.trim(), 3900))
           .setFooter({ text: `Based on ${entries.length} recent ${kind ? `${kindLabel(kind).toLowerCase()} ` : ''}journal entries${focus ? ` about “${focus}”` : ''}.` });
         await interaction.editReply({ embeds: [embed], allowedMentions: { parse: [] } });
       }

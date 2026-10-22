@@ -8,6 +8,7 @@
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { ExtendedClient } from '../../core/client';
 import { Command } from '../../types/command';
+import { truncateAtBoundary } from '../../utils/text';
 
 const descriptions: Record<string, string> = {
   avatar: 'Show a member’s avatar.',
@@ -83,7 +84,7 @@ const helpCommand: Command = {
     if (unlisted.length) {
       embed.addFields({
         name: 'More commands',
-        value: unlisted.map(name => `**/${name}** — ${descriptions[name] || 'Open this command for options.'}`).join('\n').slice(0, 1024)
+        value: truncateAtBoundary(unlisted.map(name => `**/${name}** — ${descriptions[name] || 'Open this command for options.'}`).join('\n'), 1024)
       });
     }
 

@@ -4,6 +4,7 @@ import { getMainCampaign } from '../../services/dnd-campaign';
 import { createCampaignStoryEntry, getRecentStory } from '../../services/dnd-context';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
+import { truncateAtBoundary } from '../../utils/text';
 
 const npcCommand: Command = {
   data: new SlashCommandBuilder()
@@ -35,20 +36,20 @@ const npcCommand: Command = {
         }
       ], { temperature: 0.9, max_tokens: 320, guildId: interaction.guildId });
       if (!result?.trim()) throw new Error('AI returned an empty NPC');
-      const npc = result.trim().slice(0, 1700);
+      const npc = result.trim();
       const save = interaction.options.getBoolean('save') === true;
       if (save) {
         await createCampaignStoryEntry({
           campaignId: campaign.id,
           discordUserId: interaction.user.id,
           kind: 'NPC',
-          content: npc.slice(0, 990)
+          content: npc
         });
       }
       const embed = new EmbedBuilder()
         .setColor(0x58726b)
         .setTitle('🎭 Someone new to meet')
-        .setDescription(npc)
+        .setDescription(truncateAtBoundary(npc, 3900))
         .setFooter({ text: save ? 'Saved to the campaign journal.' : 'Use /npc save:true to keep this in the campaign journal.' });
       await interaction.editReply({ embeds: [embed], allowedMentions: { parse: [] } });
     } catch (error) {

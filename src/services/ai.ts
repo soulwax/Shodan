@@ -19,6 +19,7 @@ type GenerationOptions = {
   reasoning_effort?: ReasoningEffort;
   guildId?: string | null;
   styleInstruction?: string;
+  preserveExplicitTemperature?: boolean;
 };
 type ProviderJob = {
   run: () => Promise<string | null>;
@@ -265,7 +266,7 @@ export class AIService {
   }
 
   private async resolveGenerationOptions(options: GenerationOptions): Promise<GenerationOptions> {
-    const { guildId, ...requestOptions } = options;
+    const { guildId, preserveExplicitTemperature = false, ...requestOptions } = options;
     const requestContext = (await import('./ai-context.js')).getAIRequestContext();
     const settingsGuildId = guildId ?? requestContext?.guildId ?? null;
     let temperature = requestOptions.temperature ?? 1.0;
@@ -279,7 +280,9 @@ export class AIService {
         select: { id: true, aiTemperature: true, aiMaxTokens: true, aiReasoningEffort: true }
       });
       if (settings) {
-        temperature = settings.aiTemperature;
+        if (!preserveExplicitTemperature || requestOptions.temperature === undefined) {
+          temperature = settings.aiTemperature;
+        }
         max_tokens = settings.aiMaxTokens ?? max_tokens;
         reasoning_effort = settings.aiReasoningEffort as ReasoningEffort;
       } else {
@@ -489,7 +492,11 @@ export class AIService {
     const response = await client.chat.completions.create(
       requestBody as unknown as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming
     );
-    return response.choices[0]?.message?.content ?? null;
+    const choice = response.choices[0];
+    if (choice?.finish_reason === 'length') {
+      throw new Error(`${providerNames[provider]} stopped at the output token limit; its response was incomplete`);
+    }
+    return choice?.message?.content ?? null;
   }
 
   private async generateGemini(
@@ -521,9 +528,13 @@ export class AIService {
     });
     if (!response.ok) throw await providerHttpError('Gemini', response);
     const result = await response.json() as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      candidates?: Array<{ finishReason?: string; content?: { parts?: Array<{ text?: string }> } }>;
     };
-    return result.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('') || null;
+    const candidate = result.candidates?.[0];
+    if (candidate?.finishReason === 'MAX_TOKENS') {
+      throw new Error('Gemini stopped at the output token limit; its response was incomplete');
+    }
+    return candidate?.content?.parts?.map(part => part.text || '').join('') || null;
   }
 
   private async generateAnthropic(
@@ -559,7 +570,10 @@ export class AIService {
       })
     });
     if (!response.ok) throw await providerHttpError('Anthropic', response);
-    const result = await response.json() as { content?: Array<{ type?: string; text?: string }> };
+    const result = await response.json() as { stop_reason?: string; content?: Array<{ type?: string; text?: string }> };
+    if (result.stop_reason === 'max_tokens') {
+      throw new Error('Claude stopped at the output token limit; its response was incomplete');
+    }
     return result.content?.filter(part => part.type === 'text').map(part => part.text || '').join('') || null;
   }
 
@@ -589,13 +603,16 @@ export class AIService {
     });
     if (!response.ok) throw await providerHttpError('Cloudflare Workers AI', response);
     const payload = await response.json() as {
-      result?: { response?: string };
+      result?: { response?: string; finish_reason?: string; stop_reason?: string };
       success?: boolean;
       errors?: Array<{ message?: string }>;
     };
     if (payload.success === false || payload.errors?.length) {
       const detail = payload.errors?.map(error => error.message).filter(Boolean).join('; ') || 'unknown error';
       throw new Error(`Cloudflare Workers AI request failed: ${detail}`);
+    }
+    if (payload.result?.finish_reason === 'length' || payload.result?.stop_reason === 'max_tokens') {
+      throw new Error('Cloudflare Workers AI stopped at the output token limit; its response was incomplete');
     }
     return payload.result?.response || null;
   }

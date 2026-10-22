@@ -8,6 +8,7 @@ import { getMainCampaign } from '../../services/dnd-campaign'
 import { createCampaignStoryEntry, getRecentStory } from '../../services/dnd-context'
 import { Command } from '../../types/command'
 import { logger } from '../../utils/logger'
+import { truncateAtBoundary } from '../../utils/text'
 
 const questCommand: Command = {
   data: new SlashCommandBuilder()
@@ -61,20 +62,20 @@ const questCommand: Command = {
         { temperature: 0.85, max_tokens: 420, guildId: interaction.guildId }
       )
       if (!result?.trim()) throw new Error('AI returned an empty quest')
-      const quest = result.trim().slice(0, 1800)
+      const quest = result.trim()
       const save = interaction.options.getBoolean('save') === true
       if (save) {
         await createCampaignStoryEntry({
             campaignId: campaign.id,
             discordUserId: interaction.user.id,
             kind: 'QUEST',
-            content: quest.slice(0, 950)
+            content: quest
         })
       }
       const embed = new EmbedBuilder()
         .setColor(0x8c5b32)
         .setTitle('📜 A new lead for the party')
-        .setDescription(quest)
+        .setDescription(truncateAtBoundary(quest, 3900))
         .setFooter({
           text: save
             ? 'Saved to the campaign journal.'

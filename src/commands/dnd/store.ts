@@ -14,6 +14,7 @@ import { depositCoins } from '../../services/dnd-wallet';
 import { walletCurrencyValue } from '../../services/dnd-wallet-mapping';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
+import { truncateAtBoundary } from '../../utils/text';
 
 function fallbackNarration(total: bigint): string {
   if (total <= 10n) return 'The clerk barely pauses before adding the coins to the ledger.';
@@ -31,7 +32,7 @@ async function narrateDeposit(entries: Array<[DndCurrency, bigint]>, guildId: st
       },
       { role: 'user', content: `A player deposited ${formatCoinEntries(entries)}. Give the bankkeeper’s one-line reaction.` }
     ], { temperature: 0.95, max_tokens: 80, guildId });
-    return response?.trim().slice(0, 300) || fallbackNarration(total);
+    return response?.trim() ? truncateAtBoundary(response.trim(), 300) : fallbackNarration(total);
   } catch {
     logger.warn('[D&D] AI narration unavailable; using the standard deposit line.');
     return fallbackNarration(total);
