@@ -81,6 +81,15 @@ model UserMessageHistory {
   @@index([guildId])
 }
 
+model GuildMessageHistoryOptOut {
+  guildId       String
+  discordUserId String
+  optedOutAt    DateTime @default(now())
+
+  @@id([guildId, discordUserId])
+  @@index([guildId])
+}
+
 model GuildMessageHistory {
   id                String            @id @default(uuid())
   historyId         String

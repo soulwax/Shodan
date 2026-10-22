@@ -8,10 +8,10 @@ import {
   GuildMember,
   Message,
   NewsChannel,
-  TextChannel,
-  User
+  TextChannel
 } from 'discord.js';
 import { prisma, disconnectPrisma } from '../services/prisma';
+import { lockGuildUserHistory } from '../services/message-history';
 import { logger } from '../utils/logger';
 
 const MEMBER_BATCH_SIZE = 50;
@@ -27,14 +27,22 @@ async function saveMemberProfile(
   discordUserId: string,
   displayName: string,
   avatarUrl: string
-): Promise<string> {
-  const history = await prisma.userMessageHistory.upsert({
-    where: { guildId_discordUserId: { guildId, discordUserId } },
-    create: { guildId, discordUserId, displayName, avatarUrl },
-    update: { displayName, avatarUrl }
-  });
+): Promise<string | null> {
+  return prisma.$transaction(async transaction => {
+    await lockGuildUserHistory(transaction, guildId, discordUserId);
+    const optOut = await transaction.guildMessageHistoryOptOut.findUnique({
+      where: { guildId_discordUserId: { guildId, discordUserId } },
+      select: { discordUserId: true }
+    });
+    if (optOut) return null;
 
-  return history.id;
+    const history = await transaction.userMessageHistory.upsert({
+      where: { guildId_discordUserId: { guildId, discordUserId } },
+      create: { guildId, discordUserId, displayName, avatarUrl },
+      update: { displayName, avatarUrl }
+    });
+    return history.id;
+  });
 }
 
 function getMemberProfile(member: GuildMember): { displayName: string; avatarUrl: string } {
@@ -45,12 +53,10 @@ function getMemberProfile(member: GuildMember): { displayName: string; avatarUrl
 }
 
 function getAuthorProfile(message: Message): {
-  user: User;
   displayName: string;
   avatarUrl: string;
 } {
   return {
-    user: message.author,
     displayName: message.member?.displayName ?? message.author.displayName,
     avatarUrl: message.member?.displayAvatarURL({ size: 1024 }) ?? message.author.displayAvatarURL({ size: 1024 })
   };
@@ -61,17 +67,16 @@ async function initializeGuild(client: Client, guildId: string): Promise<void> {
   logger.info(`Initializing message history for ${guild.name} (${guild.id})`);
 
   const members = await guild.members.fetch();
-  const historyIds = new Map<string, string>();
-  const memberList = [...members.values()];
+  const memberList = [...members.values()].filter(member => !member.user.bot);
+  let initializedProfiles = 0;
 
   for (let offset = 0; offset < memberList.length; offset += MEMBER_BATCH_SIZE) {
     const batch = memberList.slice(offset, offset + MEMBER_BATCH_SIZE);
     const histories = await Promise.all(batch.map(async member => {
       const profile = getMemberProfile(member);
-      const id = await saveMemberProfile(guild.id, member.id, profile.displayName, profile.avatarUrl);
-      return [member.id, id] as const;
+      return saveMemberProfile(guild.id, member.id, profile.displayName, profile.avatarUrl);
     }));
-    for (const [userId, historyId] of histories) historyIds.set(userId, historyId);
+    initializedProfiles += histories.filter(Boolean).length;
   }
 
   let totalMessages = 0;
@@ -104,47 +109,59 @@ async function initializeGuild(client: Client, guildId: string): Promise<void> {
 
       if (page.size === 0) break;
 
-      const pageProfiles = new Map<string, { displayName: string; avatarUrl: string }>();
-      for (const message of page.values()) {
-        if (!historyIds.has(message.author.id)) {
-          const { displayName, avatarUrl } = getAuthorProfile(message);
-          pageProfiles.set(message.author.id, { displayName, avatarUrl });
+      const pageMessages = [...page.values()].filter(message => !message.author.bot);
+      const authorIds = [...new Set(pageMessages.map(message => message.author.id))].sort();
+      const savedCount = await prisma.$transaction(async transaction => {
+        for (const userId of authorIds) {
+          await lockGuildUserHistory(transaction, guild.id, userId);
         }
-      }
 
-      for (const [userId, profile] of pageProfiles) {
-        const historyId = await saveMemberProfile(guild.id, userId, profile.displayName, profile.avatarUrl);
-        historyIds.set(userId, historyId);
-      }
+        const optOuts = authorIds.length
+          ? await transaction.guildMessageHistoryOptOut.findMany({
+              where: { guildId: guild.id, discordUserId: { in: authorIds } },
+              select: { discordUserId: true }
+            })
+          : [];
+        const optedOutIds = new Set(optOuts.map(optOut => optOut.discordUserId));
+        const activeMessages = pageMessages.filter(message => !optedOutIds.has(message.author.id));
+        const historyIds = new Map<string, string>();
 
-      const pageMessages = [...page.values()];
-      const savedMessages = await prisma.guildMessageHistory.findMany({
-        where: { discordMessageId: { in: pageMessages.map(message => message.id) } },
-        select: { discordMessageId: true }
-      });
-      const savedMessageIds = new Set(savedMessages.map(message => message.discordMessageId));
-      const newMessages = pageMessages.filter(message => !savedMessageIds.has(message.id));
-      skippedMessages += pageMessages.length - newMessages.length;
+        for (const message of activeMessages) {
+          if (historyIds.has(message.author.id)) continue;
+          const profile = getAuthorProfile(message);
+          const history = await transaction.userMessageHistory.upsert({
+            where: { guildId_discordUserId: { guildId: guild.id, discordUserId: message.author.id } },
+            create: {
+              guildId: guild.id,
+              discordUserId: message.author.id,
+              displayName: profile.displayName,
+              avatarUrl: profile.avatarUrl
+            },
+            update: { displayName: profile.displayName, avatarUrl: profile.avatarUrl },
+            select: { id: true }
+          });
+          historyIds.set(message.author.id, history.id);
+        }
 
-      if (newMessages.length > 0) {
-        const result = await prisma.guildMessageHistory.createMany({
-          data: newMessages.map(message => {
-          const historyId = historyIds.get(message.author.id);
-          if (!historyId) {
-            throw new Error(`No message history profile found for user ${message.author.id} in guild ${guild.id}`);
-          }
-          return {
-            historyId,
-            discordMessageId: message.id,
-            discordChannelId: channel.id,
-            content: message.content,
-            createdAt: message.createdAt
-          };
+        if (!activeMessages.length) return 0;
+        const result = await transaction.guildMessageHistory.createMany({
+          data: activeMessages.map(message => {
+            const historyId = historyIds.get(message.author.id);
+            if (!historyId) throw new Error(`No message history profile found for user ${message.author.id} in guild ${guild.id}`);
+            return {
+              historyId,
+              discordMessageId: message.id,
+              discordChannelId: channel.id,
+              content: message.content,
+              createdAt: message.createdAt
+            };
           }),
           skipDuplicates: true
         });
-        totalMessages += result.count;
-      }
+        return result.count;
+      });
+      totalMessages += savedCount;
+      skippedMessages += page.size - savedCount;
 
       if (page.size < MESSAGE_PAGE_SIZE) {
         hasMoreMessages = false;
@@ -158,7 +175,7 @@ async function initializeGuild(client: Client, guildId: string): Promise<void> {
   }
 
   logger.info(
-    `Initialized ${historyIds.size} user histories in ${guild.name}; saved ${totalMessages} new messages and skipped ${skippedMessages} already saved messages`
+    `Initialized profiles for ${initializedProfiles} current members in ${guild.name}; saved ${totalMessages} new messages and skipped ${skippedMessages} bot, opted-out, or already saved messages`
   );
 }
 

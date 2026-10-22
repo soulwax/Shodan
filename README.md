@@ -17,11 +17,15 @@ Shodan is a Discord bot for D&D campaign support, AI assisted prompts, tarot rea
 
 - `/divine` draws a tarot card and offers a reading. Tarot readings are delivered in the moment and are not stored against a user.
 - `/describe` gives an uploaded image a short narration in a chosen style. To use an image already posted in chat, right-click the post and choose **Apps → Describe image**.
-- `/image` uses Luna to refine an image prompt, then generates an image with OpenAI's `gpt-image-2.5-flare`. `/speak` uses Luna to write a short line and a funny situation-based filename, then OpenAI text-to-speech creates an MP3 voice clip.
+- `/image` uses Luna to refine a prompt, then generates an image with OpenAI's `gpt-image-2.5-flare`; attach `base_image` to edit an existing image. **Apps → Remix image** uses an image from a selected post.
+- `/speak` uses Luna to write a short line and a funny situation-based filename, then OpenAI text-to-speech creates an MP3 voice clip.
 - `/roast`, `/compliment`, `/fortune`, and `/ship` create playful AI responses.
 - `/style learn` lets users opt in by submitting their own writing sample; `/style show` displays their profile and `/style forget` deletes it. Samples are analyzed in the bot process and discarded; only aggregate writing-pattern statistics are stored per user and server.
+- `/privacy status` shows whether your messages are being stored for this server. `/privacy history-off` stops future capture and deletes your saved message history and profile; `/privacy history-on` resumes capture from that point forward. A small per-server opt-out flag remains while collection is off. Style profiles are separate and can be removed with `/style forget`.
 - `/ai-settings` lets server managers set AI temperature, maximum output tokens, OpenAI reasoning effort, and the per-server playful meanness level for non-wholesome `/divine` readings. Use `/ai-settings divine-meanness level:1` for gentle banter through `level:5` for a scathing comedic roast of the situation; the default is `2`. Level 5 does not target personal vulnerabilities or identity. `/divine wholesome:true` always uses the kind reading and ignores this setting.
 - `/roll`, `/dice`, and `/coinflip` handle tabletop and casual rolls.
+
+Right-click a message and choose **Apps → Save to journal** to edit a copy of its text and add it to the current campaign journal. The entry keeps a link to the source post. **Apps → Remix image** and **Apps → Describe image** work on image posts.
 
 ### Server and utility commands
 
@@ -105,7 +109,7 @@ Outside D&D campaign features, Shodan stores guild member names, avatar URLs, an
 
 ### Importing guild message history
 
-New user messages are saved automatically to their per-guild profile and message history while the bot is online. To backfill earlier posts and initialize profiles for current members, first apply the database migrations and then run:
+New human messages are saved automatically to their per-guild profile and message history while the bot is online, unless that user has opted out with `/privacy history-off`. To backfill earlier posts and initialize profiles for current members, first apply the database migrations and then run:
 
 ```bash
 pnpm prisma:migrate:deploy
@@ -114,7 +118,7 @@ pnpm history:init
 
 The backfill stores each member's guild display name and avatar URL, then imports message text, channel IDs, and timestamps from accessible text and announcement channels. It can be rerun safely: existing messages are not duplicated. Live capture includes new guild messages the bot receives, including in threads; bot-authored messages and direct messages are excluded. Attachments are not stored. The bot needs the Message Content privileged intent enabled in the Discord Developer Portal, plus permission to view the relevant channels; the backfill also needs the Server Members intent and Read Message History permission. Messages not accessible to the bot cannot be imported.
 
-Messages, guild display names, and avatar URLs are stored in the configured PostgreSQL database. Make sure server members are informed about this collection and follow applicable privacy requirements.
+Messages, guild display names, and avatar URLs are stored in the configured PostgreSQL database. An opt-out flag keeps future capture disabled after a user removes their history; re-enabling capture does not restore deleted messages. Make sure server members are informed about this collection and follow applicable privacy requirements.
 
 Keep `.env` private and never commit API keys or bot credentials.
 

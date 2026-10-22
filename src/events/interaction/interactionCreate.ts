@@ -24,6 +24,7 @@ import { Event } from '../../types/event';
 import { withAIRequestContext } from '../../services/ai-context';
 import { logger } from '../../utils/logger';
 import { handleImageRemixModal, isImageRemixModal } from '../../commands/fun/remix-image-message';
+import { handleJournalCaptureModal, isJournalCaptureModal } from '../../commands/dnd/save-to-journal';
 
 // commandName -> userId -> expiry timestamp (ms)
 const cooldowns = new Collection<string, Collection<string, number>>();
@@ -36,6 +37,10 @@ const interactionCreateEvent: Event = {
       if (isImageRemixModal(interaction.customId)) {
         await withAIRequestContext(interaction.guildId, interaction.user.id, () =>
           handleImageRemixModal(interaction)
+        );
+      } else if (isJournalCaptureModal(interaction.customId)) {
+        await withAIRequestContext(interaction.guildId, interaction.user.id, () =>
+          handleJournalCaptureModal(interaction)
         );
       }
       return;
