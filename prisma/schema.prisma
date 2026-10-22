@@ -47,6 +47,7 @@ model DndServer {
   aiMaxTokens        Int?
   aiReasoningEffort  String        @default("low")
   divineMeanness     Int           @default(2)
+  divinePersonality  String        @default("random")
   campaigns          DndCampaign[]
   writingStyles      UserWritingStyle[]
   createdAt          DateTime      @default(now())

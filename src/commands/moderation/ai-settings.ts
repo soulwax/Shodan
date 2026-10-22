@@ -3,6 +3,12 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder
 } from 'discord.js';
+import {
+  getPersonaById,
+  getPersonasForIntensity,
+  PERSONAS,
+  RANDOM_PERSONA_ID
+} from '../../data/personas';
 import { prisma } from '../../services/prisma';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
@@ -69,6 +75,20 @@ const aiSettingsCommand: Command = {
         .setMinValue(1)
         .setMaxValue(5)))
     .addSubcommand(command => command
+      .setName('divine-personality')
+      .setDescription('Choose the named voice for non-wholesome /divine readings.')
+      .addStringOption(option => option
+        .setName('voice')
+        .setDescription('Choose a voice for the current meanness level, or randomize each reading.')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Random each reading', value: RANDOM_PERSONA_ID },
+          ...PERSONAS.map(persona => ({
+            name: `${persona.name} · ${MEANNESS_LABELS[persona.intensity]}`,
+            value: persona.id
+          }))
+        )))
+    .addSubcommand(command => command
       .setName('reset')
       .setDescription('Restore the default AI settings for this server.')),
   category: 'moderation',
@@ -90,24 +110,72 @@ const aiSettingsCommand: Command = {
       if (subcommand === 'show') {
         const settings = await prisma.dndServer.findUnique({
           where: { discordId: guild.id },
-          select: { aiTemperature: true, aiMaxTokens: true, aiReasoningEffort: true, divineMeanness: true }
+          select: { aiTemperature: true, aiMaxTokens: true, aiReasoningEffort: true, divineMeanness: true, divinePersonality: true }
         });
+        const meanness = settings?.divineMeanness ?? DEFAULT_DIVINE_MEANNESS;
+        const voiceId = settings?.divinePersonality ?? RANDOM_PERSONA_ID;
+        const selectedPersona = getPersonaById(voiceId);
+        const voiceDescription = selectedPersona?.intensity === meanness
+          ? selectedPersona.name
+          : `Random each reading (${getPersonasForIntensity(meanness).map(persona => persona.name).join(', ')})`;
         await interaction.editReply(
           `**${guild.name} AI settings**\n` +
           `Temperature: ${settings?.aiTemperature ?? DEFAULT_TEMPERATURE.toFixed(1)}\n` +
           `Max output tokens: ${settings?.aiMaxTokens ?? 'command default'}\n` +
           `OpenAI reasoning effort: ${settings?.aiReasoningEffort ?? DEFAULT_REASONING_EFFORT}\n` +
-          `Default /divine meanness: ${MEANNESS_LABELS[settings?.divineMeanness ?? DEFAULT_DIVINE_MEANNESS]}`
+          `Default /divine meanness: ${MEANNESS_LABELS[meanness]}\n` +
+          `Default /divine voice: ${voiceDescription}`
         );
         return;
       }
 
+      if (subcommand === 'divine-personality') {
+        const voiceId = interaction.options.getString('voice', true);
+        const settings = await prisma.dndServer.findUnique({
+          where: { discordId: guild.id },
+          select: { divineMeanness: true }
+        });
+        const meanness = settings?.divineMeanness ?? DEFAULT_DIVINE_MEANNESS;
+        const persona = getPersonaById(voiceId);
+        if (persona && persona.intensity !== meanness) {
+          const compatible = getPersonasForIntensity(meanness).map(candidate => candidate.name).join(', ');
+          await interaction.editReply(
+            `**${persona.name}** is a ${MEANNESS_LABELS[persona.intensity].toLowerCase()} voice. ` +
+            `This server is set to ${MEANNESS_LABELS[meanness]}. Choose one of these voices: ${compatible}. ` +
+            `You can also change the meanness level first.`
+          );
+          return;
+        }
+
+        const updated = await prisma.dndServer.upsert({
+          where: { discordId: guild.id },
+          create: {
+            discordId: guild.id,
+            name: guild.name,
+            aiTemperature: DEFAULT_TEMPERATURE,
+            aiReasoningEffort: DEFAULT_REASONING_EFFORT,
+            divineMeanness: DEFAULT_DIVINE_MEANNESS,
+            divinePersonality: voiceId
+          },
+          update: { name: guild.name, divinePersonality: voiceId },
+          select: { divineMeanness: true, divinePersonality: true }
+        });
+        const savedPersona = getPersonaById(updated.divinePersonality);
+        await interaction.editReply(
+          `Saved the default /divine voice for **${guild.name}**: ` +
+          `${savedPersona?.name ?? 'Random each reading'}.`
+        );
+        return;
+      }
+
+      let resetIncompatibleVoice = false;
       const values = subcommand === 'reset'
         ? {
             aiTemperature: DEFAULT_TEMPERATURE,
             aiMaxTokens: null,
             aiReasoningEffort: DEFAULT_REASONING_EFFORT,
-            divineMeanness: DEFAULT_DIVINE_MEANNESS
+            divineMeanness: DEFAULT_DIVINE_MEANNESS,
+            divinePersonality: RANDOM_PERSONA_ID
           }
         : subcommand === 'temperature'
           ? { aiTemperature: interaction.options.getNumber('value', true) }
@@ -117,6 +185,19 @@ const aiSettingsCommand: Command = {
               ? { aiReasoningEffort: interaction.options.getString('effort', true) }
               : { divineMeanness: interaction.options.getInteger('level', true) };
 
+      if (subcommand === 'divine-meanness') {
+        const level = interaction.options.getInteger('level', true);
+        const current = await prisma.dndServer.findUnique({
+          where: { discordId: guild.id },
+          select: { divinePersonality: true }
+        });
+        const currentPersona = getPersonaById(current?.divinePersonality ?? RANDOM_PERSONA_ID);
+        if (currentPersona && currentPersona.intensity !== level) {
+          Object.assign(values, { divinePersonality: RANDOM_PERSONA_ID });
+          resetIncompatibleVoice = true;
+        }
+      }
+
       const settings = await prisma.dndServer.upsert({
         where: { discordId: guild.id },
         create: {
@@ -125,17 +206,20 @@ const aiSettingsCommand: Command = {
           aiTemperature: DEFAULT_TEMPERATURE,
           aiReasoningEffort: DEFAULT_REASONING_EFFORT,
           divineMeanness: DEFAULT_DIVINE_MEANNESS,
+          divinePersonality: RANDOM_PERSONA_ID,
           ...values
         },
         update: { name: guild.name, ...values },
-        select: { aiTemperature: true, aiMaxTokens: true, aiReasoningEffort: true, divineMeanness: true }
+        select: { aiTemperature: true, aiMaxTokens: true, aiReasoningEffort: true, divineMeanness: true, divinePersonality: true }
       });
 
       await interaction.editReply(
         `Saved AI settings for **${guild.name}**. Temperature: ${settings.aiTemperature}; ` +
         `max output tokens: ${settings.aiMaxTokens ?? 'command default'}; ` +
         `OpenAI reasoning effort: ${settings.aiReasoningEffort}; ` +
-        `default /divine meanness: ${MEANNESS_LABELS[settings.divineMeanness]}.`
+        `default /divine meanness: ${MEANNESS_LABELS[settings.divineMeanness]}; ` +
+        `voice: ${getPersonaById(settings.divinePersonality)?.name ?? 'Random each reading'}.` +
+        (resetIncompatibleVoice ? ' The previously selected voice did not match this level, so it was reset to random.' : '')
       );
     } catch (error) {
       logger.error('[AI settings] Failed to read or update server settings:', error);

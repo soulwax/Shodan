@@ -2,6 +2,8 @@
 
 Shodan is a Discord bot for D&D campaign support, AI assisted prompts, tarot readings, server moderation, and small group chat utilities. D&D characters, campaign journals, encounters, wallets, and transaction history are stored in PostgreSQL and scoped to each Discord server's Main Campaign.
 
+See the [North Star plan](docs/north-star-plan.md) for the product direction and phased roadmap.
+
 ## Features
 
 ### D&D campaign tools

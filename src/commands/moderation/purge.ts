@@ -15,118 +15,105 @@
 
 // File: src/commands/moderation/purge.ts
 
-
 import {
-  ChannelType,
   ChatInputCommandInteraction,
-  Client,
   PermissionFlagsBits,
   SlashCommandBuilder
 } from 'discord.js'
 import { Command } from '../../types/command'
 import { logger } from '../../utils/logger'
 
+const BULK_DELETE_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000
+
 const purgeCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('purge')
-    .setDescription('Clear up to 100 recent messages from this channel.')
-    .addIntegerOption((option) =>
-      option
-        .setName('amount')
-        .setDescription('How many recent messages should I clear? (1–100)')
-        .setRequired(true)
-        .setMinValue(1)
-        .setMaxValue(100)
-    )
+    .setDescription('Delete up to 100 recent messages from this channel.')
+    .addIntegerOption(option => option
+      .setName('amount')
+      .setDescription('How many recent messages should I delete? (1–100)')
+      .setRequired(true)
+      .setMinValue(1)
+      .setMaxValue(100))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
   category: 'moderation',
   cooldown: 5,
 
-  async execute(interaction: ChatInputCommandInteraction, client: Client) {
+  async execute(interaction: ChatInputCommandInteraction) {
     try {
-      // Get the amount of messages to delete
-      const amount = interaction.options.getInteger('amount')!
+      const amount = interaction.options.getInteger('amount', true)
+      const channel = interaction.channel
 
-      // Check if we're in a channel
-      if (!interaction.channel) {
+      if (!interaction.inGuild() || !interaction.guild) {
         await interaction.reply({
-          content: 'I can’t access this channel to remove messages.',
+          content: 'Use `/purge` in a server channel.',
           ephemeral: true
         })
         return
       }
 
-      // Check if the channel is a text-based channel that can fetch messages
-      if (!interaction.channel.isTextBased()) {
+      if (!channel?.isTextBased() || !('messages' in channel) || !('bulkDelete' in channel)) {
         await interaction.reply({
-          content: 'Messages can’t be removed from this kind of channel.',
+          content: 'I can’t remove messages from this kind of channel.',
           ephemeral: true
         })
         return
       }
 
-      // Defer the reply to avoid timeout
+      if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageMessages)) {
+        await interaction.reply({
+          content: 'You need Manage Messages permission to use `/purge`.',
+          ephemeral: true
+        })
+        return
+      }
+
+      const requiredBotPermissions = [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.ReadMessageHistory,
+        PermissionFlagsBits.ManageMessages
+      ]
+      if (requiredBotPermissions.some(permission => !interaction.appPermissions.has(permission))) {
+        await interaction.reply({
+          content: 'I need View Channel, Read Message History, and Manage Messages permissions here to use `/purge`.',
+          ephemeral: true
+        })
+        return
+      }
+
       await interaction.deferReply({ ephemeral: true })
 
-      try {
-        // Fetch messages to delete
-        const messages = await interaction.channel.messages.fetch({
-          limit: amount
-        })
+      const messages = await channel.messages.fetch({ limit: amount })
+      const cutoff = Date.now() - BULK_DELETE_MAX_AGE_MS
+      const recentMessages = messages.filter(message => message.createdTimestamp > cutoff)
+      const tooOldCount = messages.size - recentMessages.size
 
-        // Message deletion logic depends on channel type
-        if (interaction.channel.type === ChannelType.DM) {
-          // DM channels can only delete bot's own messages
-          const botMessages = messages.filter(
-            (msg) => msg.author.id === client.user?.id
-          )
-
-          for (const message of botMessages.values()) {
-            await message.delete()
-          }
-
-          await interaction.editReply(
-            `Cleared ${botMessages.size} of my messages.`,
-          )
-        } else if ('bulkDelete' in interaction.channel) {
-          // Guild channels can use bulkDelete
-          const deleted = await interaction.channel.bulkDelete(messages, true)
-
-          await interaction.editReply(
-            `Cleared ${deleted.size} message${deleted.size === 1 ? '' : 's'}.`,
-          )
-        }
-      } catch (error) {
-        logger.error('Error during message deletion:', error)
-
-        // Provide more specific error based on common issues
-        let errorMessage = 'I couldn’t clear those messages. Please try again.'
-
-        if (error instanceof Error) {
-          if (error.message.includes('14 days')) {
-            errorMessage =
-              'Discord only lets me bulk-delete messages from the last 14 days.'
-          } else if (error.message.includes('permission')) {
-            errorMessage =
-              'I don’t have permission to remove messages in this channel.'
-          }
-        }
-
-        await interaction.editReply(errorMessage)
+      let deletedCount = 0
+      if (recentMessages.size === 1) {
+        await recentMessages.first()!.delete()
+        deletedCount = 1
+      } else if (recentMessages.size > 1) {
+        // Keep each invocation to one bulk request instead of a burst of deletes.
+        deletedCount = (await channel.bulkDelete(recentMessages)).size
       }
+
+      const lines = [`Removed ${deletedCount} of ${amount} requested message${amount === 1 ? '' : 's'}.`]
+      if (messages.size < amount) {
+        lines.push(`Only ${messages.size} message${messages.size === 1 ? ' was' : 's were'} found in the channel.`)
+      }
+      if (tooOldCount > 0) {
+        lines.push(`Left ${tooOldCount} message${tooOldCount === 1 ? '' : 's'} older than 14 days untouched; Discord does not allow those in a bulk delete.`)
+      }
+      await interaction.editReply(lines.join('\n'))
     } catch (error) {
       logger.error('Error in purge command:', error)
+      const message = 'I couldn’t finish removing those messages. Check my channel permissions and try again.'
 
-      if (interaction.deferred) {
-        await interaction.editReply(
-          'Something went wrong while I was clearing messages. Please try again.'
-        )
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply(message)
       } else {
-        await interaction.reply({
-          content: 'Something went wrong while I was clearing messages. Please try again.',
-          ephemeral: true
-        })
+        await interaction.reply({ content: message, ephemeral: true })
       }
     }
   }
