@@ -281,7 +281,7 @@ const divineCommand: Command = {
                 : 1200,
           guildId: interaction.guildId,
           preserveExplicitTemperature: true,
-          dissasociation: 'none'
+          disassociation: 'none'
         }
       )
       if (!aiInterpretation?.trim())

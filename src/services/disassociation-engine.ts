@@ -2,18 +2,18 @@ import { PERSONAS } from '../data/personas'
 import type { PersonaProfile } from '../data/personas'
 import { randomIndex } from '../utils/random'
 
-export type DissasociationMessage = {
+export type DisassociationMessage = {
   role: 'user' | 'assistant' | 'system'
   content: string
 }
 export type PersonaPurpose = 'delivery' | 'visual'
 
 /** Applies a random or explicitly selected fictional persona to an AI request. */
-export class DissasociationEngine {
+export class DisassociationEngine {
   applyRandom(
-    messages: readonly DissasociationMessage[],
+    messages: readonly DisassociationMessage[],
     purpose: PersonaPurpose = 'delivery'
-  ): DissasociationMessage[] {
+  ): DisassociationMessage[] {
     if (!PERSONAS.length) return messages.map((message) => ({ ...message }))
     const persona = PERSONAS[randomIndex(PERSONAS.length)]
     return persona
@@ -22,10 +22,10 @@ export class DissasociationEngine {
   }
 
   applyPersona(
-    messages: readonly DissasociationMessage[],
+    messages: readonly DisassociationMessage[],
     persona: PersonaProfile | null,
     purpose: PersonaPurpose = 'delivery'
-  ): DissasociationMessage[] {
+  ): DisassociationMessage[] {
     const preparedMessages = messages.map((message) => ({ ...message }))
     if (!persona) return preparedMessages
 
@@ -53,7 +53,7 @@ export class DissasociationEngine {
         ? 'Use this fictional profile as visual inspiration for atmosphere, palette, motifs, and lighting. Preserve the requested subject and explicit design details; do not add the persona as a figure unless requested.'
         : 'Use this fictional profile only to lightly shape delivery. Follow the request’s task, explicit tone, format, and safety constraints. Do not mention the persona, recite its biography, attribute its traits or history to the user or subject, or invent personal facts.'
     return [
-      `[Dissasociation Engine — fictional persona: ${persona.name}]`,
+      `[Disassociation Engine — fictional persona: ${persona.name}]`,
       `Profile: ${persona.sex}, age ${persona.age}, ${persona.occupation} from ${persona.origin}.`,
       `Background: ${persona.background}`,
       `Temperament: ${persona.temperament}.`,
@@ -66,4 +66,4 @@ export class DissasociationEngine {
   }
 }
 
-export const dissasociationEngine = new DissasociationEngine()
+export const disassociationEngine = new DisassociationEngine()

@@ -8,14 +8,14 @@
 import { OpenAI } from 'openai';
 import { getPersonaById, RANDOM_PERSONA_ID } from '../data/personas';
 import type { PersonaProfile } from '../data/personas';
-import { dissasociationEngine } from './dissasociation-engine';
+import { disassociationEngine } from './disassociation-engine';
 import { logger } from '../utils/logger';
 
 type Provider = 'openai' | 'gemini' | 'grok' | 'anthropic' | 'cloudflare';
 type ChatMessage = { role: 'user' | 'assistant' | 'system'; content: string };
 type ChatCompletionMessageParam = OpenAI.Chat.ChatCompletionMessageParam;
 type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
-type DissasociationMode = 'random' | 'server' | 'none';
+type DisassociationMode = 'random' | 'server' | 'none';
 type GenerationOptions = {
   provider?: Provider | 'auto';
   model?: string;
@@ -26,10 +26,10 @@ type GenerationOptions = {
   styleInstruction?: string;
   preserveExplicitTemperature?: boolean;
   /** Defaults to random. Use server to apply the saved persona, or none to suppress injection. */
-  dissasociation?: DissasociationMode;
+  disassociation?: DisassociationMode;
   personaPurpose?: 'delivery' | 'visual';
 };
-type ProviderGenerationOptions = Omit<GenerationOptions, 'dissasociation' | 'personaPurpose' | 'guildId' | 'preserveExplicitTemperature'>;
+type ProviderGenerationOptions = Omit<GenerationOptions, 'disassociation' | 'personaPurpose' | 'guildId' | 'preserveExplicitTemperature'>;
 type ResolvedGenerationOptions = {
   options: ProviderGenerationOptions;
   persona: PersonaProfile | null;
@@ -171,13 +171,13 @@ export class AIService {
       imageUrl ? 300 : providerPreference === 'openai' ? 500 : 1000
     );
     const styledMessages = this.addStyleInstruction(messages, resolvedOptions.styleInstruction);
-    const dissasociation = options.dissasociation ?? 'random';
+    const disassociation = options.disassociation ?? 'random';
     const personaPurpose = options.personaPurpose ?? 'delivery';
-    const requestMessages = dissasociation === 'none'
+    const requestMessages = disassociation === 'none'
       ? styledMessages
-      : dissasociation === 'server'
-        ? dissasociationEngine.applyPersona(styledMessages, resolved.persona, personaPurpose)
-        : dissasociationEngine.applyRandom(styledMessages, personaPurpose);
+      : disassociation === 'server'
+        ? disassociationEngine.applyPersona(styledMessages, resolved.persona, personaPurpose)
+        : disassociationEngine.applyRandom(styledMessages, personaPurpose);
     let imageDataPromise: Promise<{ mimeType: string; data: string }> | undefined;
 
     const generate = (provider: Provider): Promise<string | null> => {
@@ -329,7 +329,7 @@ export class AIService {
     const {
       guildId,
       preserveExplicitTemperature = false,
-      dissasociation = 'random',
+      disassociation = 'random',
       ...requestOptions
     } = options;
     delete requestOptions.personaPurpose;
@@ -347,7 +347,7 @@ export class AIService {
         select: { id: true, aiTemperature: true, aiMaxTokens: true, aiReasoningEffort: true, divinePersonality: true }
       });
       if (settings) {
-        if (dissasociation === 'server') {
+        if (disassociation === 'server') {
           persona = getPersonaById(settings.divinePersonality) ?? null;
         }
         if (!preserveExplicitTemperature || requestOptions.temperature === undefined) {

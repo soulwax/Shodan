@@ -16,7 +16,7 @@ export async function refineImagePrompt(
     provider: 'openai',
     guildId,
     max_tokens: 400,
-    dissasociation: 'server',
+    disassociation: 'server',
     personaPurpose: 'visual'
   });
 
