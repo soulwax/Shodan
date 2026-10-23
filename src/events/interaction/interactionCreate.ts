@@ -54,6 +54,7 @@ const interactionCreateEvent: Event = {
       logger.warn(`Command ${interaction.commandName} not found`);
       return;
     }
+    const isTarotCommand = command.category === 'tarot';
 
     // Cooldown enforcement
     if (command.cooldown) {
@@ -73,7 +74,7 @@ const interactionCreateEvent: Event = {
         const remaining = ((expiry - now) / 1000).toFixed(1);
         await interaction.reply({
           content: `Please wait **${remaining}s** before using \`${commandLabel}\` again.`,
-          ephemeral: true
+          ...(isTarotCommand ? {} : { ephemeral: true })
         });
         return;
       }
@@ -99,9 +100,15 @@ const interactionCreateEvent: Event = {
 
         const errorMessage = 'There was an error while executing this command!';
         if (interaction.replied || interaction.deferred) {
-          await interaction.followUp({ content: errorMessage, ephemeral: true });
+          await interaction.followUp({
+            content: errorMessage,
+            ...(isTarotCommand ? {} : { ephemeral: true })
+          });
         } else {
-          await interaction.reply({ content: errorMessage, ephemeral: true });
+          await interaction.reply({
+            content: errorMessage,
+            ...(isTarotCommand ? {} : { ephemeral: true })
+          });
         }
       }
     });

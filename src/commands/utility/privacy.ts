@@ -56,7 +56,7 @@ const privacyCommand: Command = {
         const backfillText = consent.backfillOptedInAt
           ? 'may be imported by the server history initializer'
           : 'are not included; use `/privacy history-backfill` to opt in separately';
-        await interaction.editReply(`Your message history is **on** for future messages in this server. Shodan has ${history?._count.messages ?? 0} saved message${history?._count.messages === 1 ? '' : 's'} for you. Older posts ${backfillText}. Use /privacy history-off to stop collection and delete your saved history.`);
+        await interaction.editReply(`Your message history is **on** for future messages in this server. Shodan has ${history?._count.messages ?? 0} saved message${history?._count.messages === 1 ? '' : 's'} for you. Older posts ${backfillText}. Use \`/privacy history-off\` to stop collection and delete your saved history.`);
         return;
       }
 
@@ -77,7 +77,7 @@ const privacyCommand: Command = {
           return history?._count.messages ?? 0;
         });
 
-        await interaction.editReply(`Message history is now **off** for this server. I deleted your saved profile and ${deletedMessages} saved message${deletedMessages === 1 ? '' : 's'}. Your style profile is separate; use /style forget to delete it.`);
+        await interaction.editReply(`Message history is now **off** for this server. I deleted your saved profile and ${deletedMessages} saved message${deletedMessages === 1 ? '' : 's'}. Your style profile is separate; use \`/style forget\` to delete it.`);
         return;
       }
 
@@ -91,6 +91,11 @@ const privacyCommand: Command = {
           });
         });
         await interaction.editReply('You opted in to saving **future** messages in this server. Older messages are not imported unless you separately use `/privacy history-backfill`. Use `/privacy history-off` to revoke consent and delete saved history.');
+        return;
+      }
+
+      if (action !== 'history-backfill') {
+        await interaction.editReply('That privacy option is not recognized. Use `/privacy status` to check your settings.');
         return;
       }
 

@@ -91,7 +91,7 @@ export const DIVINATION_SPREADS: readonly DivinationSpread[] = [
       { id: 'hopes_fears', name: 'Hopes and worries', guidance: 'A prompt to examine hopes and worries without claiming to know private feelings.' },
       { id: 'possible_direction', name: 'Possible direction', guidance: 'One possible direction if patterns continue; never fate or certainty.' }
     ],
-    synthesisGuidance: 'Synthesize the central pattern, tensions, and choices. Do not narrate ten disconnected mini-readings or present the final card as fixed fate.'
+    synthesisGuidance: 'Give a complete integrated reading without explaining the cards one by one. Weave all ten positions into four connected movements: the present, challenge, and foundation as the central pattern; recent past and near-term possibility as the timeline; conscious focus, approach, environment, and hopes and worries as the surrounding context; and possible direction as a conditional synthesis. Show how the cards reinforce or complicate one another, then explain the overall practical implication. Do not omit a position, but do not give each card its own separate explanation. Do not present the final card as fixed fate.'
   }
 ]
 
