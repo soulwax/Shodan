@@ -23,14 +23,14 @@ See the [North Star plan](docs/north-star-plan.md) for the product direction and
 
 ### AI, tarot, and fun
 
-- `/divine` supports one-card, three-card, past–present–possible-direction, yes/no leaning, decision, relationship, and Celtic Cross spreads. Each spread gets a fixed illustrated layout, with reversed cards visibly turned and labeled; replay seeds reproduce the same cards, reversals, and layout. Readings are ephemeral and are not stored against a user.
+- `/divine` supports one-card, three-card, past–present–possible-direction, yes/no leaning, decision, relationship, and Celtic Cross spreads. Each spread gets a fixed illustrated layout, with reversed cards visibly turned and labeled; replay seeds reproduce the same cards, reversals, and layout. Readings are public in Discord and are not stored in the bot database.
 - `/describe` gives an uploaded image a short narration in a chosen style. To use an image already posted in chat, right-click the post and choose **Apps → Describe image**.
 - `/image` uses Luna to refine a prompt, then generates an image with OpenAI's `gpt-image-2.5-flare`; attach `base_image` to edit an existing image. **Apps → Remix image** uses an image from a selected post.
 - `/speak` uses Luna to write a short line and a funny situation-based filename, then OpenAI text-to-speech creates an MP3 voice clip.
 - `/roast`, `/fortune`, and `/ship` create playful AI responses. `/compliment` creates a longer, personal response and can use up to eight of the recipient's recent saved posts to ground positive character observations when they opted in to message history in this server. If no saved posts are available, it may check up to 100 recent messages in the current channel and use up to eight of the caller's own posts for a self-compliment, or the recipient's posts if that recipient opted in. Those fetched posts are not saved by the command. It does not quote or reveal the posts.
 - The **Dissasociation Engine** randomly adds one fictional persona to regular AI requests. Voice and image requests do not use random personas; they use the server’s saved character when one is set. `/divine` keeps its own server-selected voice.
 - `/style learn` explicitly opts in when you submit your own writing sample; `/style show` displays your profile and `/style forget` deletes it. Samples are analyzed in the bot process and discarded; only aggregate writing-pattern statistics are stored per user and server.
-- `/privacy status` shows your per-server message-history consent and saved message count. Collection is **off by default**. `/privacy history-on` opts in to future messages; `/privacy history-backfill` is a separate opt-in for older accessible posts. `/privacy history-off` revokes both consents and deletes your saved message history and profile. Style profiles are separate and can be removed with `/style forget`.
+- `/privacy explain` summarizes what the bot stores, sends to AI providers, retains, and how to request or perform deletion; it also works in a DM. `/privacy status` shows your per-server message-history consent and saved message count. Collection is **off by default**. `/privacy history-on` opts in to future messages; `/privacy history-backfill` is a separate opt-in for older accessible posts, which you can import with `/history-backfill`. `/privacy history-off` revokes both consents and deletes your saved message history and profile. Style profiles are separate and can be removed with `/style forget`.
 - `/ai-settings` lets server managers set AI temperature, maximum output tokens, OpenAI reasoning effort, and the per-server playful meanness level and character for `/divine`. Use `/ai-settings divine-meanness level:1` for gentle banter through `level:5` for a scathing comedic roast of the situation; the default is `2`. Use `/ai-settings divine-personality` to view this server’s saved character profile, or add `voice` to choose and persist a character. `/speak` and `/image` use that saved character and do not fall back to random personas. Level 5 does not target personal vulnerabilities or identity. `/divine wholesome:true` always uses the kind reading and ignores the meanness setting.
 - `/roll`, `/dice`, and `/coinflip` handle tabletop and casual rolls.
 
@@ -66,9 +66,16 @@ XAI_API_KEY= # or GROK_API_KEY
 ANTHROPIC_API_KEY=
 CF_TOKEN=
 CF_ACCOUNT_ID=
+
+# Shown in /privacy explain; use the responsible operator's real details.
+PRIVACY_CONTROLLER_NAME=
+PRIVACY_CONTACT=
+PRIVACY_NOTICE_URL=
 ```
 
 The bot requires `BOT_TOKEN`, `CLIENT_ID`, and `DATABASE_URL` to start. AI credentials are optional for non-AI commands. `/image` and `/speak` require `OPENAI_API_KEY`; other AI commands can use configured providers, tried in this order: Gemini, OpenAI, Cloudflare Workers AI, Grok, then Anthropic. Cloudflare requires both `CF_TOKEN` and `CF_ACCOUNT_ID`; it uses Workers AI for text fallback and a vision model for image requests.
+
+Set `PRIVACY_CONTROLLER_NAME` to the responsible person or organization, `PRIVACY_CONTACT` to a private email address or contact URL for data requests, and `PRIVACY_NOTICE_URL` to the full HTTPS privacy notice. `/privacy explain` displays these values. Without them, it tells users to ask a server manager for the operator's details. The operator's full notice should specify the legal bases for processing, active providers and hosting regions, transfer safeguards where relevant, retention outside this bot, and how to exercise data-protection rights. The command's built-in summary does not establish legal compliance on its own.
 
 OpenAI uses `gpt-6-luna`. AI generation defaults are stored per Discord server: temperature defaults to `1.0`, output tokens keep each command’s own limit unless a server-wide limit is set, and OpenAI reasoning effort defaults to `low`. OpenAI GPT-6 only accepts a temperature value when reasoning effort is `none`, so Shodan omits temperature from OpenAI requests at other reasoning levels; the temperature setting still applies to Gemini and Cloudflare.
 
@@ -115,20 +122,22 @@ Slash commands are registered when the bot starts. For local development, use `p
 
 D&D records are separated by Discord server and campaign. Commands use the campaign bound to their channel or, when none is bound, the server default. Character sheets and memories belong to an individual Discord user; journal entries, sessions, and encounters belong to the campaign. Journal entries keep their source text and a stored AI interpretation. After note changes, run `/story big-picture` to refresh the shared overview; quest, NPC, and encounter prompts reuse it until the next journal change. Wallet balances are per user and campaign, and deposits and withdrawals are recorded in the database ledger.
 
-Outside D&D campaign features, Shodan stores a user's guild display name, avatar URL, and message history only after that user opts in for that server. Tarot readings and command history are not stored. Per-command cooldowns use Discord user IDs in process memory only until the cooldown expires.
+Outside D&D campaign features, Shodan stores a user's guild display name, avatar URL, and message history only after that user opts in for that server. Tarot readings and general command history are not stored in the bot database; public bot replies remain in Discord. Per-command cooldowns use Discord user IDs in process memory only until the cooldown expires.
 
 ### Opting in to guild message history
 
-Message-history collection starts **off for every user in every server**. Use `/privacy history-on` to allow storage of future messages in that server. It does not authorize importing earlier posts. To separately allow the backfill, use `/privacy history-backfill`; a server manager can then run:
+Message-history collection starts **off for every user in every server**. Use `/privacy history-on` to allow storage of future messages in that server. It does not authorize importing earlier posts. To separately allow your own backfill, use `/privacy history-backfill`, then run `/history-backfill`. Server managers can still batch-import opted-in users with the initializer:
 
 ```bash
 pnpm prisma:migrate:deploy
 pnpm history:init
 ```
 
-The initializer only creates backfill profiles and imports messages for users who have both consents recorded in that server. It stores message text, channel IDs, timestamps, guild display names, and avatar URLs. It can be rerun safely: existing messages are not duplicated. Backfill covers accessible text and announcement channels; live capture stores future human-authored messages the bot receives, including in threads. Bot-authored messages, direct messages, and attachments are excluded. The bot needs the Message Content privileged intent enabled in the Discord Developer Portal and permission to view relevant channels; backfill also needs the Server Members intent and Read Message History permission. Messages the bot cannot access cannot be imported.
+`/history-backfill` imports only the executing user's accessible posts and requires both consents. The server-wide initializer imports messages for every user who has both consents recorded in that server. Both store message text, channel IDs, timestamps, guild display names, and avatar URLs, and skip existing messages on reruns. Backfill covers accessible text and announcement channels; live capture stores future human-authored messages the bot receives, including in threads. Bot-authored messages, direct messages, and attachments are excluded. The bot needs the Message Content privileged intent enabled in the Discord Developer Portal and permission to view relevant channels; the server-wide initializer also needs the Server Members intent. Backfill needs Read Message History permission. Messages the bot cannot access cannot be imported.
 
 Messages, guild display names, and avatar URLs are stored in PostgreSQL while consent is active, with no automatic expiry. `/privacy history-off` revokes future and backfill consent and deletes that user's saved history in the server. Re-enabling future capture does not restore deleted messages; older posts require another separate backfill opt-in. The opt-in migration deletes all message-history records collected by previous default-on versions because those records do not establish consent. It leaves separately opted-in writing-style profiles intact. Server managers should explain the feature before members opt in and follow applicable privacy requirements.
+
+`/style forget` removes an opted-in style profile. `/purge-char` currently deletes the caller's character and memories in the **Main Campaign** only. `/story delete` removes a journal entry the caller authored (or one a DM may manage) and clears the stored campaign overview. Other campaign records, including session notes, encounters, wallets, and transaction history, have no general self-service deletion command. Contact the bot operator for access, correction, or erasure requests concerning those records or technical logs. The bot sets no automatic expiry for its stored campaign records or logs. Deleting bot database records does not remove messages and files already posted to Discord or copies processed by an AI provider.
 
 Keep `.env` private and never commit API keys or bot credentials.
 
