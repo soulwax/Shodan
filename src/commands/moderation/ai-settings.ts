@@ -10,20 +10,11 @@ import {
   PERSONAS,
   RANDOM_PERSONA_ID
 } from '../../data/personas';
+import { DEFAULT_AI_TEMPERATURE as DEFAULT_TEMPERATURE, DEFAULT_AI_REASONING_EFFORT as DEFAULT_REASONING_EFFORT } from '../../config/ai';
+import { DEFAULT_DIVINE_MEANNESS, MEANNESS_LABELS } from '../../data/persona-intensities';
 import { prisma } from '../../services/prisma';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
-
-const DEFAULT_TEMPERATURE = 1.0;
-const DEFAULT_REASONING_EFFORT = 'low';
-const DEFAULT_DIVINE_MEANNESS = 2;
-const MEANNESS_LABELS: Record<number, string> = {
-  1: 'Gentle',
-  2: 'Dry (default)',
-  3: 'Sharp',
-  4: 'Spicy',
-  5: 'Maximum playful bite'
-};
 
 function personaLabel(persona: ReturnType<typeof getPersonaById>): string {
   if (!persona) return 'Random each reading';

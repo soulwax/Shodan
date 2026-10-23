@@ -30,3 +30,21 @@ export function shortenPromptText(text: string, maxLength: number): string {
   const note = '\n[The source text continues beyond this point.]';
   return `${truncateAtBoundary(value, Math.max(1, maxLength - note.length))}${note}`;
 }
+
+/** Split complete prose into bounded Discord fields, retaining every word. */
+export function splitLongText(text: string, maxLength = 1024): string[] {
+  if (!Number.isInteger(maxLength) || maxLength < 1) throw new Error('Text chunk length must be a positive integer.');
+  if (text.length <= maxLength) return [text]
+  const parts: string[] = []
+  let remaining = text
+  while (remaining.length > maxLength) {
+    let splitIndex = remaining.lastIndexOf('.', maxLength - 1)
+    if (splitIndex === -1)
+      splitIndex = remaining.lastIndexOf(' ', maxLength - 1)
+    const end = splitIndex <= 0 ? maxLength : splitIndex + 1
+    parts.push(remaining.substring(0, end).trimEnd())
+    remaining = remaining.substring(end).trimStart()
+  }
+  if (remaining) parts.push(remaining)
+  return parts
+}

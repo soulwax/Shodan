@@ -7,8 +7,14 @@ const {
   drawUniqueCardIndices,
   parseDivinationReplaySeed
 } = require('../dist/services/divination-draw.js');
+const { parseDivinationRequest, createDivinationReading, DivinationInputError } = require('../dist/services/divination-reading.js');
+const { getPersonasForIntensity } = require('../dist/data/personas.js');
+const { loadAIConfiguration } = require('../dist/config/ai.js');
+const tarotCards = require('../dist/data/tarot-deck.js').loadTarotDeck();
 const { campaignChannelScope } = require('../dist/utils/dnd-campaign-scope.js');
 const { visibleStoryWhere } = require('../dist/utils/dnd-visibility.js');
+const { splitLongText } = require('../dist/utils/text.js');
+const { getQuestionSearchTerms, rankCampaignStoryEntries } = require('../dist/utils/dnd-story-search.js');
 const { DndStoryVisibility } = require('@prisma/client');
 
 test('common divination spreads have complete, stable position data', () => {
@@ -71,6 +77,51 @@ test('older one-card replay seeds remain supported', () => {
   assert.throws(() => parseDivinationReplaySeed('59-0-0.7-0-5', spreads, 'decision', 78), /older seed supports a one-card/);
 });
 
+test('reading preparation preserves seeded cards, reversals, voice, and seed', () => {
+  const seed = buildDivinationReplaySeed({
+    spreadId: 'three_card',
+    temperature: 0.7,
+    wholesome: true,
+    meanness: 2,
+    voiceIndex: 1,
+    cardIndices: [0, 3, 7],
+    reversed: [true, false, true]
+  });
+  const request = parseDivinationRequest({ question: '  What should I consider?  ', seed }, tarotCards.length);
+  const reading = createDivinationReading(tarotCards, request);
+
+  assert.equal(reading.question, 'What should I consider?');
+  assert.equal(reading.persona.id, getPersonasForIntensity(2)[1].id);
+  assert.deepEqual(reading.draws.map(draw => draw.reversed), [true, false, true]);
+  assert.deepEqual(reading.draws.map(draw => draw.card), [tarotCards[0], tarotCards[3], tarotCards[7]]);
+  assert.equal(reading.replaySeed, seed);
+  assert.throws(() => parseDivinationRequest({ question: '   ' }, tarotCards.length), DivinationInputError);
+});
+
+test('AI configuration trims credentials, respects provider aliases, and uses safe defaults', () => {
+  const configured = loadAIConfiguration({
+    OPENAI_API_KEY: ' openai-key ',
+    XAI_API_KEY: ' xai-key ',
+    GROK_API_KEY: ' fallback-key ',
+    CF_TOKEN: ' cloudflare-token ',
+    AI_REQUESTS_PER_MINUTE: '17'
+  });
+  assert.equal(configured.apiKeys.openai, 'openai-key');
+  assert.equal(configured.apiKeys.grok, 'xai-key');
+  assert.equal(configured.apiKeys.cloudflare, undefined);
+  assert.equal(configured.requestsPerMinute, 17);
+
+  const defaults = loadAIConfiguration({});
+  assert.equal(defaults.requestsPerMinute, 10);
+  assert.deepEqual(defaults.apiKeys, {
+    openai: undefined,
+    gemini: undefined,
+    grok: undefined,
+    anthropic: undefined,
+    cloudflare: undefined
+  });
+});
+
 test('thread campaign routing checks the thread before its parent', () => {
   assert.deepEqual(campaignChannelScope('thread-1', 'forum-1'), ['thread-1', 'forum-1']);
   assert.deepEqual(campaignChannelScope('channel-1'), ['channel-1']);
@@ -96,4 +147,26 @@ test('journal visibility filters secrets and personal notes before retrieval', (
   assert.equal(matches(playerScope, privateMine), true);
   assert.equal(matches(dmScope, dmOther), true);
   assert.equal(matches(dmScope, privateOther), false);
+});
+
+test('long Discord fields stay within the configured limit without cutting long words', () => {
+  const prose = 'The lantern keeper studies old maps by candlelight. '.repeat(80).trim();
+  const proseParts = splitLongText(prose);
+  assert.ok(proseParts.every(part => part.length <= 1024));
+  assert.equal(proseParts.join(' '), prose);
+
+  const unbrokenWord = 'x'.repeat(2500);
+  const wordParts = splitLongText(unbrokenWord);
+  assert.ok(wordParts.every(part => part.length <= 1024));
+  assert.equal(wordParts.join(''), unbrokenWord);
+});
+
+test('journal question search removes common words and ranks matching notes first', () => {
+  const terms = getQuestionSearchTerms('What did the lantern keeper find in the observatory?');
+  assert.deepEqual(terms, ['lantern', 'keeper', 'find', 'observatory']);
+
+  const recent = { id: 'recent', content: 'A keeper watches the docks.', interpretation: null, createdAt: new Date('2026-01-02') };
+  const matching = { id: 'matching', content: 'A lantern burns inside the observatory.', interpretation: null, createdAt: new Date('2026-01-01') };
+  const unrelated = { id: 'unrelated', content: 'The bell rings at midnight.', interpretation: null, createdAt: new Date('2026-01-03') };
+  assert.deepEqual(rankCampaignStoryEntries([recent, matching, unrelated], terms).map(entry => entry.id), ['matching', 'recent', 'unrelated']);
 });
