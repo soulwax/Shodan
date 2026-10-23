@@ -15,7 +15,6 @@
 
 // File: src/commands/tarot/divine.ts
 
-import { createCanvas, loadImage } from 'canvas'
 import {
   ChatInputCommandInteraction,
   EmbedBuilder,
@@ -42,6 +41,7 @@ import { prisma } from '../../services/prisma'
 import { Card } from '../../types/card'
 import { Command } from '../../types/command'
 import { logger } from '../../utils/logger'
+import { createDivinationSpreadImage } from '../../utils/divination-image'
 import { randomBoolean, randomIndex } from '../../utils/random'
 import { truncateAtBoundary } from '../../utils/text'
 
@@ -71,121 +71,6 @@ function meannessInstruction(level: number): string {
     5: 'Deliver a scathing, theatrical roast of the situation and choices explicitly described in the question. Keep it abstrusely comedic; invent personal details and attack. End with a slight wink of encouragement.'
   }
   return instructions[level] ?? instructions[DEFAULT_DIVINE_MEANNESS]
-}
-
-function cardImageFilename(card: Card): string {
-  const suit =
-    card.type === 'major'
-      ? 'm'
-      : card.suit === 'cups'
-        ? 'c'
-        : card.suit === 'wands'
-          ? 'w'
-          : card.suit === 'swords'
-            ? 's'
-            : 'p'
-
-  if (card.type === 'major') {
-    const aliases: Record<number, string> = { 8: 'strength', 10: 'wheel' }
-    let name =
-      aliases[card.value_int] ??
-      card.name
-        .toLowerCase()
-        .replace(/^the\s+/i, '')
-        .replace(/\s+last\s+/i, '')
-        .replace(/\s+/g, '')
-    if (name === 'hangedman') name = 'hanged'
-    return `${suit}_${card.value_int.toString().padStart(2, '0')}_${name}.jpg`
-  }
-
-  if (['page', 'knight', 'queen', 'king'].includes(card.value || ''))
-    return `${suit}_${card.value}.jpg`
-  if (card.value === 'ace') return `${suit}_ace.jpg`
-  return `${suit}_${card.value_int}.jpg`
-}
-
-async function createSpreadImage(
-  draws: DrawnCard[],
-  imageDirectory: string
-): Promise<{ buffer: Buffer; filename: string } | null> {
-  const loaded = await Promise.all(
-    draws.map(async (draw) => {
-      const filename = cardImageFilename(draw.card)
-      const imagePath = path.join(imageDirectory, filename)
-      if (!fs.existsSync(imagePath)) return null
-      try {
-        return { image: await loadImage(imagePath), filename }
-      } catch (error) {
-        logger.warn(`[Divine] Could not load card image ${filename}:`, error)
-        return null
-      }
-    })
-  )
-  if (!loaded.some(Boolean)) return null
-
-  if (draws.length === 1 && loaded[0]) {
-    const { image, filename } = loaded[0]
-    const canvas = createCanvas(image.width, image.height)
-    const context = canvas.getContext('2d')
-    if (draws[0].reversed) {
-      context.translate(canvas.width / 2, canvas.height / 2)
-      context.rotate(Math.PI)
-      context.translate(-canvas.width / 2, -canvas.height / 2)
-    }
-    context.drawImage(image, 0, 0)
-    return { buffer: canvas.toBuffer('image/jpeg'), filename }
-  }
-
-  const columns = draws.length <= 3 ? draws.length : 5
-  const rows = Math.ceil(draws.length / columns)
-  const cellWidth = 200
-  const cardHeight = 250
-  const labelHeight = 38
-  const gap = 12
-  const padding = 14
-  const canvas = createCanvas(
-    padding * 2 + columns * cellWidth + (columns - 1) * gap,
-    padding * 2 + rows * (labelHeight + cardHeight) + (rows - 1) * gap
-  )
-  const context = canvas.getContext('2d')
-  context.fillStyle = '#21162a'
-  context.fillRect(0, 0, canvas.width, canvas.height)
-  context.font = 'bold 15px sans-serif'
-  context.fillStyle = '#f4edf7'
-
-  draws.forEach((draw, index) => {
-    const column = index % columns
-    const row = Math.floor(index / columns)
-    const x = padding + column * (cellWidth + gap)
-    const y = padding + row * (labelHeight + cardHeight + gap)
-    const label = `${index + 1}. ${draw.position.name}${draw.reversed ? ' · Reversed' : ''}`
-    context.fillText(label, x, y + 22, cellWidth)
-    const entry = loaded[index]
-    if (!entry) return
-
-    const scale = Math.min(
-      cellWidth / entry.image.width,
-      cardHeight / entry.image.height
-    )
-    const width = entry.image.width * scale
-    const height = entry.image.height * scale
-    const centerX = x + (cellWidth - width) / 2
-    const centerY = y + labelHeight + (cardHeight - height) / 2
-    context.save()
-    if (draw.reversed) {
-      context.translate(centerX + width / 2, centerY + height / 2)
-      context.rotate(Math.PI)
-      context.drawImage(entry.image, -width / 2, -height / 2, width, height)
-    } else {
-      context.drawImage(entry.image, centerX, centerY, width, height)
-    }
-    context.restore()
-  })
-
-  return {
-    buffer: canvas.toBuffer('image/jpeg'),
-    filename: 'divination-spread.jpg'
-  }
 }
 
 function splitLongText(text: string, maxLength = 1024): string[] {
@@ -453,8 +338,9 @@ const divineCommand: Command = {
 
       const imageDirectory = path.join(__dirname, '../../../static/rider-waite')
       try {
-        const image = await createSpreadImage(drawnCards, imageDirectory)
+        const image = await createDivinationSpreadImage(drawnCards, spread, imageDirectory)
         if (image) {
+          embed.setImage(`attachment://${image.filename}`)
           await interaction.editReply({
             embeds: [embed],
             files: [{ attachment: image.buffer, name: image.filename }]

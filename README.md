@@ -23,7 +23,7 @@ See the [North Star plan](docs/north-star-plan.md) for the product direction and
 
 ### AI, tarot, and fun
 
-- `/divine` supports one-card, three-card, past–present–possible-direction, yes/no leaning, decision, relationship, and Celtic Cross spreads. Draws are without replacement, every position is labeled, and replay seeds reproduce the cards, reversals, and voice. Readings are ephemeral and are not stored against a user.
+- `/divine` supports one-card, three-card, past–present–possible-direction, yes/no leaning, decision, relationship, and Celtic Cross spreads. Each spread gets a fixed illustrated layout, with reversed cards visibly turned and labeled; replay seeds reproduce the same cards, reversals, and layout. Readings are ephemeral and are not stored against a user.
 - `/describe` gives an uploaded image a short narration in a chosen style. To use an image already posted in chat, right-click the post and choose **Apps → Describe image**.
 - `/image` uses Luna to refine a prompt, then generates an image with OpenAI's `gpt-image-2.5-flare`; attach `base_image` to edit an existing image. **Apps → Remix image** uses an image from a selected post.
 - `/speak` uses Luna to write a short line and a funny situation-based filename, then OpenAI text-to-speech creates an MP3 voice clip.
