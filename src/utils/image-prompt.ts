@@ -1,4 +1,20 @@
+// Copyright (C) 2025 soulwax@github
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import { AIService } from '../services/ai';
+import { FUN_PROMPTS } from '../data/prompts/fun';
 
 export async function refineImagePrompt(
   ai: AIService,
@@ -7,8 +23,8 @@ export async function refineImagePrompt(
   guildId?: string | null
 ): Promise<string> {
   const systemPrompt = isEdit
-    ? 'Turn the user request into concise, vivid instructions for editing the supplied image. Keep the original subject, composition, and details the user did not ask to change. Add useful visual details, and do not add text or lettering unless the user asks for it. Return only the image-edit prompt.'
-    : 'Turn the user request into one concise, vivid prompt for an image-generation model. Preserve the requested subject and intent, add useful visual composition and style details, and do not add text or lettering unless the user asks for it. Return only the image prompt.';
+    ? FUN_PROMPTS.refineImage.editSystem
+    : FUN_PROMPTS.refineImage.generateSystem;
   const refinedPrompt = await ai.generateText([
     { role: 'system', content: systemPrompt },
     { role: 'user', content: prompt }

@@ -1,3 +1,18 @@
+// Copyright (C) 2025 soulwax@github
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 export const PROVIDER_REQUEST_TIMEOUT_MS = 30_000;
 
 export class ProviderHttpError extends Error {
@@ -68,13 +83,46 @@ export async function fetchWithProviderTimeout(
 }
 
 export async function downloadImage(imageUrl: string): Promise<{ mimeType: string; data: string }> {
-  const response = await fetchWithProviderTimeout('Image download', imageUrl);
-  if (!response.ok) throw new Error(`Unable to fetch image (HTTP ${response.status})`);
-  const mimeType = response.headers.get('content-type')?.split(';')[0].toLowerCase();
-  if (!mimeType || !['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mimeType)) {
-    throw new Error('Unsupported image format');
+  const maxBytes = 10 * 1024 * 1024;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), PROVIDER_REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(imageUrl, { signal: controller.signal });
+    if (!response.ok) throw new Error(`Unable to fetch image (HTTP ${response.status})`);
+    const mimeType = response.headers.get('content-type')?.split(';')[0].toLowerCase();
+    if (!mimeType || !['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mimeType)) {
+      await response.body?.cancel().catch(() => undefined);
+      throw new Error('Unsupported image format');
+    }
+
+    const contentLength = Number(response.headers.get('content-length'));
+    if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+      await response.body?.cancel().catch(() => undefined);
+      throw new Error('Image is larger than 10 MB');
+    }
+    if (!response.body) throw new Error('Image response had no body');
+
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    let chunk = await reader.read();
+    while (!chunk.done) {
+      const value = chunk.value;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        throw new Error('Image is larger than 10 MB');
+      }
+      chunks.push(value);
+      chunk = await reader.read();
+    }
+    return { mimeType, data: Buffer.concat(chunks).toString('base64') };
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(`Image download timed out after ${PROVIDER_REQUEST_TIMEOUT_MS / 1000} seconds`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-  const bytes = Buffer.from(await response.arrayBuffer());
-  if (bytes.length > 10 * 1024 * 1024) throw new Error('Image is larger than 10 MB');
-  return { mimeType, data: bytes.toString('base64') };
 }

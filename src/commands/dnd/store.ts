@@ -6,6 +6,7 @@
 // (at your option) any later version.
 
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { DND_PROMPTS } from '../../data/prompts/dnd';
 import { DndCurrency } from '@prisma/client';
 import { getAIService } from '../../services/ai';
 import { campaignChannelScope, getCampaignContext } from '../../services/dnd-campaign';
@@ -28,9 +29,9 @@ async function narrateDeposit(entries: Array<[DndCurrency, bigint]>, guildId: st
     const response = await getAIService().generateText([
       {
         role: 'system',
-        content: 'You are the friendly, slightly opinionated keeper of a fantasy adventurers’ bank. Write one short, vivid line reacting to a deposit of coins that may use several denominations. Sound like a Dungeon Master adding flavor at the table: natural, playful, and specific to the size of the handful. Do not repeat amounts, invent fees, change the balance, or use markdown. Keep it under 25 words.'
+        content: DND_PROMPTS.coinDeposit.system
       },
-      { role: 'user', content: `A player deposited ${formatCoinEntries(entries)}. Give the bankkeeper’s one-line reaction.` }
+      { role: 'user', content: DND_PROMPTS.coinDeposit.user(formatCoinEntries(entries)) }
     ], { temperature: 0.95, max_tokens: 80, guildId });
     return response?.trim() ? truncateAtBoundary(response.trim(), 300) : fallbackNarration(total);
   } catch {

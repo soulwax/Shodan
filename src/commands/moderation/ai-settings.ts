@@ -1,3 +1,18 @@
+// Copyright (C) 2025 soulwax@github
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import {
   ChatInputCommandInteraction,
   EmbedBuilder,
@@ -8,17 +23,20 @@ import {
   getPersonaById,
   getPersonasForIntensity,
   PERSONAS,
+  PERSONA_PRESENTATION,
+  PERSONA_SEX_LABELS,
   RANDOM_PERSONA_ID
 } from '../../data/personas';
+import { AI_SETTING_LIMITS, REASONING_EFFORT_CHOICES } from '../../data/ai-settings';
 import { DEFAULT_AI_TEMPERATURE as DEFAULT_TEMPERATURE, DEFAULT_AI_REASONING_EFFORT as DEFAULT_REASONING_EFFORT } from '../../config/ai';
-import { DEFAULT_DIVINE_MEANNESS, MEANNESS_LABELS } from '../../data/persona-intensities';
+import { DEFAULT_DIVINE_MEANNESS, MAX_MEANNESS_LEVEL, MEANNESS_CHOICES, MEANNESS_LABELS, MIN_MEANNESS_LEVEL } from '../../data/persona-intensities';
 import { prisma } from '../../services/prisma';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
 
 function personaLabel(persona: ReturnType<typeof getPersonaById>): string {
-  if (!persona) return 'Random each reading';
-  const sexLabel = persona.sex === 'female' ? 'Female' : 'Male';
+  if (!persona) return PERSONA_PRESENTATION.randomChoice;
+  const sexLabel = PERSONA_SEX_LABELS[persona.sex];
   return `${sexLabel} · ${persona.name}`;
 }
 
@@ -26,18 +44,18 @@ function personaEmbed(persona: NonNullable<ReturnType<typeof getPersonaById>>, g
   return new EmbedBuilder()
     .setTitle(persona.name)
     .setDescription(
-      `${persona.sex === 'female' ? 'Female' : 'Male'} · Age ${persona.age} · ${MEANNESS_LABELS[persona.intensity]}\n` +
+      `${PERSONA_SEX_LABELS[persona.sex]} · ${PERSONA_PRESENTATION.ageLabel} ${persona.age} · ${MEANNESS_LABELS[persona.intensity]}\n` +
       `${persona.occupation} · ${persona.origin}`
     )
     .addFields(
-      { name: 'Background', value: persona.background },
-      { name: 'Temperament', value: persona.temperament },
-      { name: 'Traits', value: persona.traits.join(' · ') },
-      { name: 'Values', value: persona.values.join(' · ') },
-      { name: 'Mannerisms', value: persona.mannerisms.join(' · ') },
-      { name: 'Voice direction', value: persona.voice }
+      { name: PERSONA_PRESENTATION.fields.background, value: persona.background },
+      { name: PERSONA_PRESENTATION.fields.temperament, value: persona.temperament },
+      { name: PERSONA_PRESENTATION.fields.traits, value: persona.traits.join(' · ') },
+      { name: PERSONA_PRESENTATION.fields.values, value: persona.values.join(' · ') },
+      { name: PERSONA_PRESENTATION.fields.mannerisms, value: persona.mannerisms.join(' · ') },
+      { name: PERSONA_PRESENTATION.fields.voice, value: persona.voice }
     )
-    .setFooter({ text: `${guildName} · persistent /divine voice` });
+    .setFooter({ text: PERSONA_PRESENTATION.serverVoiceFooter(guildName) });
 }
 
 const aiSettingsCommand: Command = {
@@ -55,8 +73,8 @@ const aiSettingsCommand: Command = {
         .setName('value')
         .setDescription('Higher values make responses more varied. Default: 1.0.')
         .setRequired(true)
-        .setMinValue(0)
-        .setMaxValue(2)))
+        .setMinValue(AI_SETTING_LIMITS.temperature.min)
+        .setMaxValue(AI_SETTING_LIMITS.temperature.max)))
     .addSubcommand(command => command
       .setName('max-tokens')
       .setDescription('Set a server-wide output token limit; applies to all AI responses.')
@@ -64,8 +82,8 @@ const aiSettingsCommand: Command = {
         .setName('value')
         .setDescription('Maximum generated tokens (64 to 16384).')
         .setRequired(true)
-        .setMinValue(64)
-        .setMaxValue(16384)))
+        .setMinValue(AI_SETTING_LIMITS.maxTokens.min)
+        .setMaxValue(AI_SETTING_LIMITS.maxTokens.max)))
     .addSubcommand(command => command
       .setName('reasoning')
       .setDescription('Set the OpenAI reasoning effort (default: low).')
@@ -73,14 +91,7 @@ const aiSettingsCommand: Command = {
         .setName('effort')
         .setDescription('Lower effort is faster; higher effort uses more reasoning.')
         .setRequired(true)
-        .addChoices(
-          { name: 'None', value: 'none' },
-          { name: 'Low', value: 'low' },
-          { name: 'Medium', value: 'medium' },
-          { name: 'High', value: 'high' },
-          { name: 'Extra high', value: 'xhigh' },
-          { name: 'Maximum', value: 'max' }
-        )))
+        .addChoices(...REASONING_EFFORT_CHOICES)))
     .addSubcommand(command => command
       .setName('divine-meanness')
       .setDescription('Set the default playful snark level for non-wholesome /divine readings.')
@@ -88,8 +99,9 @@ const aiSettingsCommand: Command = {
         .setName('level')
         .setDescription('1 is gentle; 5 is a scathing roast of the situation. Default: 2.')
         .setRequired(true)
-        .setMinValue(1)
-        .setMaxValue(5)))
+        .setMinValue(MIN_MEANNESS_LEVEL)
+        .setMaxValue(MAX_MEANNESS_LEVEL)
+        .addChoices(...MEANNESS_CHOICES)))
     .addSubcommand(command => command
       .setName('divine-personality')
       .setDescription('Set or inspect this server’s character for /divine, /speak, and /image.')
@@ -98,7 +110,7 @@ const aiSettingsCommand: Command = {
         .setDescription('Choose a character, or randomize /divine readings. /speak and /image use saved characters only.')
         .setRequired(false)
         .addChoices(
-          { name: 'Random each reading', value: RANDOM_PERSONA_ID },
+          { name: PERSONA_PRESENTATION.randomChoice, value: RANDOM_PERSONA_ID },
           ...PERSONAS.map(persona => ({
             name: `${personaLabel(persona)} · ${MEANNESS_LABELS[persona.intensity]}`,
             value: persona.id

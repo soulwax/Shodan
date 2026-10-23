@@ -1,3 +1,18 @@
+// Copyright (C) 2025 soulwax@github
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import { OpenAI } from 'openai';
 import { providerNames } from '../../../config/ai';
 import { PROVIDER_REQUEST_TIMEOUT_MS } from '../http';
@@ -22,20 +37,18 @@ export async function generateOpenAICompatible(
   const reasoningEffort = provider === 'openai' ? options.reasoning_effort ?? 'low' : undefined;
   // GPT-6 only accepts temperature when reasoning effort is none.
   const temperature = provider === 'openai' && reasoningEffort !== 'none' ? undefined : options.temperature;
-  const apiMessages: ChatCompletionMessageParam[] = imageUrl
-    ? [
-        ...messages
-          .filter(message => message.role === 'system')
-          .map(message => ({ role: 'system' as const, content: message.content })),
-        {
+  const lastUserIndex = imageUrl ? messages.map(message => message.role).lastIndexOf('user') : -1;
+  const apiMessages: ChatCompletionMessageParam[] = messages.map((message, index) =>
+    imageUrl && index === lastUserIndex
+      ? {
           role: 'user',
           content: [
             { type: 'image_url', image_url: { url: imageUrl, detail: 'low' } },
-            { type: 'text', text: messages.filter(message => message.role === 'user').map(message => message.content).join('\n') }
+            { type: 'text', text: message.content }
           ]
         }
-      ]
-    : messages;
+      : { role: message.role, content: message.content }
+  );
 
   const requestBody = {
     model,

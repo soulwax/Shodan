@@ -23,6 +23,7 @@ import {
   SlashCommandBuilder
 } from 'discord.js';
 import { getAIService } from '../../services/ai';
+import { FUN_PROMPTS } from '../../data/prompts/fun';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
 
@@ -47,15 +48,17 @@ const fortuneCommand: Command = {
     const displayName = member?.displayName ?? targetUser.username;
     const avatarUrl = targetUser.displayAvatarURL({ size: 256, extension: 'png' });
 
-    const systemPrompt = `Write a short fortune that feels like a perceptive friend noticed something and left a curious thought behind. Keep it to one or two sentences: a little wise, maybe faintly strange, but still grounded and human. Skip horoscope clichés, rhymes, grand promises, and fake mystical language. Don't use the person's name or claim to know their future. If the image offers a harmless detail, you can let it inspire the fortune without pretending it reveals anything personal.`;
-
-    const textPrompt = `Leave a small fortune for ${displayName}.${!isSelf ? ` ${interaction.user.username} asked for it on their behalf.` : ''} Their avatar is attached; use it only as a light creative spark, not as evidence about the person.`;
+    const textPrompt = FUN_PROMPTS.fortune.user({
+      name: displayName,
+      requester: interaction.user.username,
+      isSelf
+    });
 
     try {
       const ai = getAIService();
       const fortune = await ai.generateText(
         [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: FUN_PROMPTS.fortune.system },
           { role: 'user', content: textPrompt }
         ],
         {

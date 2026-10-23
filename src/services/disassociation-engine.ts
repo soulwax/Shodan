@@ -1,5 +1,21 @@
+// Copyright (C) 2025 soulwax@github
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import { PERSONAS } from '../data/personas'
 import type { PersonaProfile } from '../data/personas'
+import { PERSONA_PROMPTS } from '../data/prompts/personas'
 import { randomIndex } from '../utils/random'
 
 export type DisassociationMessage = {
@@ -48,19 +64,11 @@ export class DisassociationEngine {
     persona: PersonaProfile,
     purpose: PersonaPurpose
   ): string {
-    const useInstruction =
-      purpose === 'visual'
-        ? 'Use this fictional profile as visual inspiration for atmosphere, palette, motifs, and lighting. Preserve the requested subject and explicit design details; do not add the persona as a figure unless requested.'
-        : 'Use this fictional profile only to lightly shape delivery. Follow the request’s task, explicit tone, format, and safety constraints. Do not mention the persona, recite its biography, attribute its traits or history to the user or subject, or invent personal facts.'
+    const useInstruction = purpose === 'visual'
+      ? PERSONA_PROMPTS.visualUse
+      : PERSONA_PROMPTS.deliveryUse
     return [
-      `[Disassociation Engine — fictional persona: ${persona.name}]`,
-      `Profile: ${persona.sex}, age ${persona.age}, ${persona.occupation} from ${persona.origin}.`,
-      `Background: ${persona.background}`,
-      `Temperament: ${persona.temperament}.`,
-      `Traits: ${persona.traits.join(', ')}.`,
-      `Values: ${persona.values.join(', ')}.`,
-      `Mannerisms: ${persona.mannerisms.join(', ')}.`,
-      `Voice direction: ${persona.voice}.`,
+      ...PERSONA_PROMPTS.formatProfile(persona),
       useInstruction
     ].join('\n')
   }

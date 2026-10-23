@@ -1,36 +1,38 @@
+// Copyright (C) 2025 soulwax@github
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import {
   ChatInputCommandInteraction,
   EmbedBuilder,
   SlashCommandBuilder
 } from 'discord.js';
 import { DndStoryKind, DndStoryVisibility } from '@prisma/client';
+import { DND_STORY_KIND_CHOICES, DND_STORY_LIMITS, DND_STORY_VISIBILITY_CHOICES, storyVisibilityLabel } from '../../data/dnd-story';
 import { campaignChannelScope, getCampaignContext, isCampaignDm } from '../../services/dnd-campaign';
 import { createCampaignStoryEntry, deleteCampaignStoryEntry, interpretCampaignStoryEntry, updateCampaignStoryEntry } from '../../services/dnd-context';
 import { answerFromJournal, CampaignStoryNote, createCampaignBigPicture, createCampaignRecap } from '../../services/dnd-story-ai';
 import { findRelevantCampaignStoryEntries, findStoryEntriesByReference, makeStoryWhere } from '../../services/dnd-story-query';
 import { visibleStoryWhere } from '../../utils/dnd-visibility';
-import { storyKindLabel } from '../../utils/dnd-story';
+import { storyKindLabel } from '../../data/dnd-story';
 import { formatStorySnippet } from '../../presentation/dnd-story';
 import { prisma } from '../../services/prisma';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
 
-const PAGE_SIZE = 10;
-const BIG_PICTURE_ENTRY_LIMIT = 100;
-const kindChoices = [
-  { name: 'Event', value: DndStoryKind.EVENT },
-  { name: 'NPC', value: DndStoryKind.NPC },
-  { name: 'Location', value: DndStoryKind.LOCATION },
-  { name: 'Clue', value: DndStoryKind.CLUE },
-  { name: 'Quest', value: DndStoryKind.QUEST },
-  { name: 'Lore', value: DndStoryKind.LORE }
-];
-const visibilityChoices = [
-  { name: 'Shared with the campaign', value: DndStoryVisibility.SHARED },
-  { name: 'DM only', value: DndStoryVisibility.DM_ONLY },
-  { name: 'Private to me', value: DndStoryVisibility.PRIVATE }
-];
-
+const PAGE_SIZE = DND_STORY_LIMITS.pageSize;
+const BIG_PICTURE_ENTRY_LIMIT = DND_STORY_LIMITS.bigPictureEntries;
 function getKind(interaction: ChatInputCommandInteraction): DndStoryKind | undefined {
   return (interaction.options.getString('kind') as DndStoryKind | null) ?? undefined;
 }
@@ -47,19 +49,19 @@ const storyCommand: Command = {
       .setName('add')
       .setDescription('Add a detail to the campaign journal.')
       .addStringOption(option => option.setName('tidbit').setDescription('A rumor, event, clue, NPC detail, or other note.').setRequired(true).setMaxLength(1000))
-      .addStringOption(option => option.setName('kind').setDescription('Classify this note. Defaults to Event.').addChoices(...kindChoices))
-      .addStringOption(option => option.setName('visibility').setDescription('Who can see this note? Defaults to shared.').addChoices(...visibilityChoices)))
+      .addStringOption(option => option.setName('kind').setDescription('Classify this note. Defaults to Event.').addChoices(...DND_STORY_KIND_CHOICES))
+      .addStringOption(option => option.setName('visibility').setDescription('Who can see this note? Defaults to shared.').addChoices(...DND_STORY_VISIBILITY_CHOICES)))
     .addSubcommand(subcommand => subcommand
       .setName('recent')
       .setDescription('Browse recent journal entries.')
       .addIntegerOption(option => option.setName('page').setDescription('Page number (10 entries per page).').setMinValue(1).setMaxValue(10000))
-      .addStringOption(option => option.setName('kind').setDescription('Only show entries of this type.').addChoices(...kindChoices)))
+      .addStringOption(option => option.setName('kind').setDescription('Only show entries of this type.').addChoices(...DND_STORY_KIND_CHOICES)))
     .addSubcommand(subcommand => subcommand
       .setName('search')
       .setDescription('Search source notes and their interpretations.')
       .addStringOption(option => option.setName('query').setDescription('A name, place, clue, or phrase.').setRequired(true).setMinLength(2).setMaxLength(100))
       .addIntegerOption(option => option.setName('page').setDescription('Page number (10 entries per page).').setMinValue(1).setMaxValue(10000))
-      .addStringOption(option => option.setName('kind').setDescription('Only search entries of this type.').addChoices(...kindChoices)))
+      .addStringOption(option => option.setName('kind').setDescription('Only search entries of this type.').addChoices(...DND_STORY_KIND_CHOICES)))
     .addSubcommand(subcommand => subcommand
       .setName('show')
       .setDescription('Read a full journal entry and its interpretation.')
@@ -69,7 +71,7 @@ const storyCommand: Command = {
       .setDescription('Correct your note, or any note as a server moderator.')
       .addStringOption(option => option.setName('id').setDescription('The 8-character entry reference.').setRequired(true).setMinLength(6).setMaxLength(36))
       .addStringOption(option => option.setName('tidbit').setDescription('The corrected journal text.').setRequired(true).setMaxLength(1000))
-      .addStringOption(option => option.setName('visibility').setDescription('Optionally change who can see this note.').addChoices(...visibilityChoices)))
+      .addStringOption(option => option.setName('visibility').setDescription('Optionally change who can see this note.').addChoices(...DND_STORY_VISIBILITY_CHOICES)))
     .addSubcommand(subcommand => subcommand
       .setName('delete')
       .setDescription('Remove your note, or any note as a server moderator.')
@@ -89,7 +91,7 @@ const storyCommand: Command = {
       .setName('recap')
       .setDescription('Summarize recent campaign memories with AI.')
       .addStringOption(option => option.setName('focus').setDescription('Optional person, place, or plot thread.').setMaxLength(100))
-      .addStringOption(option => option.setName('kind').setDescription('Limit the recap to one note type.').addChoices(...kindChoices))),
+      .addStringOption(option => option.setName('kind').setDescription('Limit the recap to one note type.').addChoices(...DND_STORY_KIND_CHOICES))),
   category: 'dnd',
   cooldown: 3,
 
@@ -129,8 +131,7 @@ const storyCommand: Command = {
           visibility,
           content
         });
-        const visibilityText = entry.visibility === DndStoryVisibility.DM_ONLY ? ' as a DM-only note'
-          : entry.visibility === DndStoryVisibility.PRIVATE ? ' as a private note' : '';
+        const visibilityText = entry.visibility === DndStoryVisibility.SHARED ? '' : ` as a ${storyVisibilityLabel(entry.visibility)} note`;
         await interaction.editReply(`Added${visibilityText} as **${storyKindLabel(entry.kind)}** entry [#${entry.id.slice(0, 8)}]${entry.interpretation ? ' and connected it to the campaign memory' : ' (saved; AI interpretation is pending)'}. Use \`/story big-picture\` to build or refresh the shared campaign overview.`);
         return;
       }

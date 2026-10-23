@@ -6,7 +6,8 @@
 // (at your option) any later version.
 
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
-import { DndCurrency } from '@prisma/client';
+import { BALANCE_CURRENCY_ORDER } from '../../data/dnd-currency';
+import { DND_PROMPTS } from '../../data/prompts/dnd';
 import { getAIService } from '../../services/ai';
 import { campaignChannelScope, getCampaignContext } from '../../services/dnd-campaign';
 import { CURRENCIES, formatCoins } from '../../services/dnd-currency';
@@ -15,16 +16,14 @@ import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
 import { truncateAtBoundary } from '../../utils/text';
 
-const currencies = [DndCurrency.CP, DndCurrency.SP, DndCurrency.GP, DndCurrency.EL, DndCurrency.PC];
-
 async function narrateVault(entries: string[], guildId: string): Promise<string> {
   try {
     const response = await getAIService().generateText([
       {
         role: 'system',
-        content: 'You are a fantasy bankkeeper giving a quick, warm update about an adventurer’s vault. In one short line, describe its feel based on the mix of coins. Be playful and grounded, not grandiose. Do not repeat the amounts or suggest the money has changed. No markdown. Under 20 words.'
+        content: DND_PROMPTS.balanceNarration.system
       },
-      { role: 'user', content: `The vault contains ${entries.join(', ')}. Give the bankkeeper’s one-line observation.` }
+      { role: 'user', content: DND_PROMPTS.balanceNarration.user(entries) }
     ], { temperature: 0.8, max_tokens: 60, guildId });
     return response?.trim() ? truncateAtBoundary(response.trim(), 250) : 'The ledger is up to date.';
   } catch {
@@ -57,8 +56,8 @@ const balanceCommand: Command = {
       );
       const wallet = await getWallet(campaign.id, interaction.user.id);
       const balances = wallet
-        ? getWalletCurrencies(wallet, currencies)
-        : currencies.map(currency => ({ currency, amount: 0n }));
+        ? getWalletCurrencies(wallet, BALANCE_CURRENCY_ORDER)
+        : BALANCE_CURRENCY_ORDER.map(currency => ({ currency, amount: 0n }));
       const lines = balances.map(({ currency, amount }) => `**${formatCoins(amount)} ${currency.toLowerCase()}**`);
       const entries = balances.map(({ currency, amount }) => `${formatCoins(amount)} ${CURRENCIES[currency].label}`);
       const narration = !server.aiNarrationEnabled

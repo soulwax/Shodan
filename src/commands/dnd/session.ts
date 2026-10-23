@@ -1,5 +1,21 @@
+// Copyright (C) 2025 soulwax@github
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import { DndSessionStatus, DndStoryVisibility } from '@prisma/client';
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { DND_STORY_VISIBILITY_CHOICES, storyVisibilityLabel, storyVisibilityMarker } from '../../data/dnd-story';
 import { campaignChannelScope, getCampaignContext, isCampaignDm } from '../../services/dnd-campaign';
 import {
   addDndSessionNote,
@@ -12,12 +28,6 @@ import { prisma } from '../../services/prisma';
 import { Command } from '../../types/command';
 import { logger } from '../../utils/logger';
 import { truncateAtBoundary } from '../../utils/text';
-
-const visibilityChoices = [
-  { name: 'Shared with the campaign', value: DndStoryVisibility.SHARED },
-  { name: 'DM only', value: DndStoryVisibility.DM_ONLY },
-  { name: 'Private to me', value: DndStoryVisibility.PRIVATE }
-];
 
 function channelIds(interaction: ChatInputCommandInteraction): string[] {
   const parentId = interaction.channel?.isThread() ? interaction.channel.parentId : null;
@@ -37,7 +47,7 @@ const sessionCommand: Command = {
       .setName('note')
       .setDescription('Record an attributed session note.')
       .addStringOption(option => option.setName('text').setDescription('A decision, discovery, event, or open question.').setRequired(true).setMinLength(1).setMaxLength(1000))
-      .addStringOption(option => option.setName('visibility').setDescription('Who can see this note? Defaults to shared.').addChoices(...visibilityChoices)))
+    .addStringOption(option => option.setName('visibility').setDescription('Who can see this note? Defaults to shared.').addChoices(...DND_STORY_VISIBILITY_CHOICES)))
     .addSubcommand(command => command.setName('status').setDescription('Show the active session, recent notes, and encounter.'))
     .addSubcommand(command => command.setName('end').setDescription('End play and draft a recap for DM review.'))
     .addSubcommand(command => command
@@ -104,9 +114,7 @@ const sessionCommand: Command = {
           visibility,
           content: interaction.options.getString('text', true).trim()
         });
-        const label = visibility === DndStoryVisibility.DM_ONLY ? 'DM-only'
-          : visibility === DndStoryVisibility.PRIVATE ? 'private' : 'shared';
-        await interaction.editReply(`Added your ${label} note to **${session.title}**.`);
+        await interaction.editReply(`Added your ${storyVisibilityLabel(visibility)} note to **${session.title}**.`);
         return;
       }
 
@@ -122,9 +130,7 @@ const sessionCommand: Command = {
           select: { title: true, round: true, scene: true }
         });
         const noteLines = session.notes.map(note => {
-          const visibility = note.visibility === DndStoryVisibility.DM_ONLY ? ' · DM only'
-            : note.visibility === DndStoryVisibility.PRIVATE ? ' · private' : '';
-          return `• <@${note.discordUserId}>${visibility}: ${truncateAtBoundary(note.content, 180)}`;
+          return `• <@${note.discordUserId}>${storyVisibilityMarker(note.visibility)}: ${truncateAtBoundary(note.content, 180)}`;
         });
         const statusLabel = session.status === DndSessionStatus.REVIEWING ? 'Recap awaiting DM review' : 'In progress';
         await interaction.editReply({ content: [

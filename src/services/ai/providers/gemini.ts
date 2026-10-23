@@ -1,3 +1,18 @@
+// Copyright (C) 2025 soulwax@github
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import { fetchWithProviderTimeout, providerHttpError } from '../http';
 import type { ChatMessage, ImageData, ProviderGenerationOptions } from '../../../types/ai';
 
@@ -7,13 +22,16 @@ export async function generateGemini(
   options: ProviderGenerationOptions,
   image?: ImageData
 ): Promise<string | null> {
-  const contents = messages
-    .filter(message => message.role !== 'system')
-    .map(message => ({
+  const conversation = messages.filter(message => message.role !== 'system');
+  const lastUserIndex = conversation.map(message => message.role).lastIndexOf('user');
+  const contents = conversation
+    .map((message, index) => ({
       role: message.role === 'assistant' ? 'model' : 'user',
       parts: [
         { text: message.content },
-        ...(image && message.role === 'user' ? [{ inlineData: { mimeType: image.mimeType, data: image.data } }] : [])
+        ...(image && index === lastUserIndex
+          ? [{ inlineData: { mimeType: image.mimeType, data: image.data } }]
+          : [])
       ]
     }));
   const systemInstruction = messages.find(message => message.role === 'system')?.content;
