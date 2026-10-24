@@ -280,7 +280,7 @@ export function drawFooter(
   context.fillStyle = palette.muted
   context.font = '500 12px serif'
   context.fillText(
-    'RIDER–WAITE SET  ·  SHODAN: WHY SAY GOODBYE?  ·  GNU v3.0  ·',
+    'RIDER–WAITE SET  ·  SHODAN: WHY SAY GOODBYE?  ·  GNU v3.0  ·  soulwax',
     width / 2,
     height - 34
   )
