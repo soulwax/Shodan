@@ -205,7 +205,7 @@ function drawCelticCross(
   images: Array<CardImage | null>,
   spread: DivinationSpread
 ): Buffer {
-  const width = 1810
+  const width = 1560
   const height = 1690
   const canvas = createCanvas(width, height)
   const context = canvas.getContext('2d')
@@ -214,34 +214,34 @@ function drawCelticCross(
 
   const mainWidth = 190
   const mainHeight = 310
-  const crossCenter = { x: 505, y: 630 }
+  const crossCenter = { x: 480, y: 665 }
   const crossPoints: Record<string, Point> = {
-    conscious_focus: { x: crossCenter.x, y: 300 },
+    conscious_focus: { x: crossCenter.x, y: 335 },
     recent_past: { x: 245, y: crossCenter.y },
     present: crossCenter,
     challenge: { ...crossCenter, rotation: 90, scale: 0.72 },
-    near_term: { x: 765, y: crossCenter.y },
-    foundation: { x: crossCenter.x, y: 960 }
+    near_term: { x: 715, y: crossCenter.y },
+    foundation: { x: crossCenter.x, y: 995 }
   }
 
   drawConnector(context, [
-    { x: crossCenter.x, y: 300 + mainHeight / 2 + 12 },
-    { x: crossCenter.x, y: 960 - mainHeight / 2 - 12 }
+    { x: crossCenter.x, y: 335 + mainHeight / 2 + 12 },
+    { x: crossCenter.x, y: 995 - mainHeight / 2 - 12 }
   ])
   drawConnector(context, [
     { x: 245 + mainWidth / 2 + 12, y: crossCenter.y },
-    { x: 765 - mainWidth / 2 - 12, y: crossCenter.y }
+    { x: 715 - mainWidth / 2 - 12, y: crossCenter.y }
   ])
 
-  const staffX = 1435
+  const staffX = 1200
   const staffWidth = 160
   const staffHeight = 261
-  const staffY = [1200, 900, 600, 300]
+  const staffY = [1180, 910, 640, 370]
   const staffHeader = context
   staffHeader.textAlign = 'center'
   staffHeader.textBaseline = 'alphabetic'
   staffHeader.fillStyle = palette.gold
-  staffHeader.font = '700 16px sans-serif'
+  staffHeader.font = '700 16px serif'
   staffHeader.fillText('THE STAFF', staffX, 205)
   drawConnector(
     context,
