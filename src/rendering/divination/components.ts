@@ -18,15 +18,15 @@ import type { DrawnCard } from '../../services/divination-reading'
 import type { CardImage, DrawingContext, Point } from './types'
 
 export const palette = {
-  backgroundTop: '#100d18',
-  backgroundBottom: '#24182c',
-  panel: '#21182b',
-  panelHighlight: '#30213a',
-  gold: '#ddc38e',
-  goldDim: '#89734f',
+  backgroundTop: '#07110d',
+  backgroundBottom: '#0b1912',
+  panel: '#101b15',
+  panelHighlight: '#19271e',
+  gold: '#83c99a',
+  goldDim: '#426b50',
   parchment: '#f4ecda',
   text: '#f7f1e7',
-  muted: '#c7b9cb',
+  muted: '#b8c8bc',
   purple: '#a77cc0'
 }
 
@@ -80,59 +80,88 @@ export function drawBackground(
   context.fillStyle = gradient
   context.fillRect(0, 0, width, height)
 
-  const glow = context.createRadialGradient(
-    width * 0.5,
-    height * 0.48,
-    0,
-    width * 0.5,
-    height * 0.48,
-    Math.max(width, height) * 0.65
-  )
-  glow.addColorStop(0, 'rgba(154, 112, 156, 0.12)')
-  glow.addColorStop(1, 'rgba(9, 7, 14, 0.48)')
-  context.fillStyle = glow
-  context.fillRect(0, 0, width, height)
+  drawWaveThreads(context, width, height)
+  drawBlueprintGrid(context, width, height)
+  drawFiligreeCorners(context, width, height)
 
-  drawCelestialEngraving(context, width, height)
+  context.strokeStyle = 'rgba(131, 201, 154, 0.28)'
+  context.lineWidth = 0.8
+  clippedRect(context, 24, 24, width - 48, height - 48, 24)
+  context.stroke()
+}
 
-  // A seeded star field gives the paper a little texture without changing
-  // between renders of the same canvas size.
+/** Fine deterministic thread lines form a woven wave texture beneath the cards. */
+function drawWaveThreads(
+  context: DrawingContext,
+  width: number,
+  height: number
+): void {
   context.save()
-  let state = (Math.imul(width, 73856093) ^ Math.imul(height, 19349663)) >>> 0
-  const random = (): number => {
-    state = (Math.imul(state, 1664525) + 1013904223) >>> 0
-    return state / 0x100000000
-  }
-  context.strokeStyle = palette.gold
-  for (let index = 0; index < 180; index += 1) {
-    const x = 38 + random() * (width - 76)
-    const y = 38 + random() * (height - 76)
-    const radius = random() > 0.94 ? 2.2 : 0.8
-    context.globalAlpha = 0.06 + random() * 0.1
-    context.beginPath()
-    context.arc(x, y, radius, 0, Math.PI * 2)
-    context.fillStyle = palette.gold
-    context.fill()
-    if (radius > 2) {
-      context.globalAlpha *= 0.65
-      context.lineWidth = 0.7
+  context.strokeStyle = 'rgba(77, 157, 104, 0.038)'
+  context.lineWidth = 0.48
+  context.lineCap = 'round'
+
+  const spacing = 7
+  const step = 18
+  for (let row = -1; row * spacing < height; row += 1) {
+    const baseline = row * spacing
+    const phase = row * 0.075
+    for (const threadOffset of [-0.8, 0.8]) {
       context.beginPath()
-      context.moveTo(x - 5, y)
-      context.lineTo(x + 5, y)
-      context.moveTo(x, y - 5)
-      context.lineTo(x, y + 5)
+      for (let x = 0; x <= width + step; x += step) {
+        const progress = x / width
+        const broadWave = Math.sin(progress * Math.PI * 3 + phase) * 2.8
+        const fineWave = Math.sin(progress * Math.PI * 9 - phase * 0.72) * 0.65
+        const y = baseline + broadWave + fineWave + threadOffset
+        if (x === 0) context.moveTo(x, y)
+        else context.lineTo(x, y)
+      }
       context.stroke()
     }
   }
-  context.restore()
 
-  context.strokeStyle = 'rgba(221, 195, 142, 0.38)'
-  context.lineWidth = 1
-  clippedRect(context, 22, 22, width - 44, height - 44, 26)
+  for (let column = -1; column * spacing < width; column += 1) {
+    const baseline = column * spacing
+    const phase = column * 0.075
+    for (const threadOffset of [-0.8, 0.8]) {
+      context.beginPath()
+      for (let y = 0; y <= height + step; y += step) {
+        const progress = y / height
+        const broadWave = Math.sin(progress * Math.PI * 3 + phase) * 2.8
+        const fineWave = Math.sin(progress * Math.PI * 9 - phase * 0.72) * 0.65
+        const x = baseline + broadWave + fineWave + threadOffset
+        if (y === 0) context.moveTo(x, y)
+        else context.lineTo(x, y)
+      }
+      context.stroke()
+    }
+  }
+
+  context.restore()
+}
+
+/** Blueprint grid is measured in nominal 96-pixel inches. */
+function drawBlueprintGrid(
+  context: DrawingContext,
+  width: number,
+  height: number
+): void {
+  const inch = 96
+  const offset = inch / 2
+  context.save()
+  context.strokeStyle = 'rgba(92, 190, 126, 0.17)'
+  context.lineWidth = 0.7
+  context.beginPath()
+  for (let x = offset; x < width; x += inch) {
+    context.moveTo(x, 24)
+    context.lineTo(x, height - 24)
+  }
+  for (let y = offset; y < height; y += inch) {
+    context.moveTo(24, y)
+    context.lineTo(width - 24, y)
+  }
   context.stroke()
-  context.strokeStyle = 'rgba(221, 195, 142, 0.12)'
-  clippedRect(context, 30, 30, width - 60, height - 60, 22)
-  context.stroke()
+  context.restore()
 }
 
 function clippedRect(
@@ -155,32 +184,11 @@ function clippedRect(
   context.closePath()
 }
 
-function drawCelestialEngraving(
+function drawFiligreeCorners(
   context: DrawingContext,
   width: number,
   height: number
 ): void {
-  context.save()
-  context.translate(width / 2, height / 2)
-  const radius = Math.min(width, height) * 0.31
-  context.strokeStyle = 'rgba(221, 195, 142, 0.055)'
-  context.lineWidth = 1
-  for (const inset of [0, 13, 29]) {
-    context.beginPath()
-    context.arc(0, 0, radius + inset, 0, Math.PI * 2)
-    context.stroke()
-  }
-  for (let index = 0; index < 24; index += 1) {
-    const angle = (index / 24) * Math.PI * 2
-    const inner = radius + 4
-    const outer = radius + (index % 3 === 0 ? 25 : 15)
-    context.beginPath()
-    context.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner)
-    context.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer)
-    context.stroke()
-  }
-  context.restore()
-
   const inset = 46
   const size = 18
   const corners = [
@@ -190,8 +198,8 @@ function drawCelestialEngraving(
     { x: inset, y: height - inset, sx: 1, sy: -1 }
   ]
   context.save()
-  context.strokeStyle = 'rgba(221, 195, 142, 0.48)'
-  context.lineWidth = 1
+  context.strokeStyle = 'rgba(131, 201, 154, 0.34)'
+  context.lineWidth = 0.7
   for (const corner of corners) {
     context.save()
     context.translate(corner.x, corner.y)
@@ -234,11 +242,19 @@ export function drawHeader(
   context.fillText(spread.name, width / 2, 106, width - 110)
 
   context.fillStyle = palette.muted
-  setFittedFont(context, spread.description, width - 150, 16, 12, '400', 'serif')
+  setFittedFont(
+    context,
+    spread.description,
+    width - 150,
+    16,
+    12,
+    '400',
+    'serif'
+  )
   context.fillText(spread.description, width / 2, 137, width - 150)
 
   const y = 159
-  context.strokeStyle = 'rgba(221, 195, 142, 0.44)'
+  context.strokeStyle = 'rgba(131, 201, 154, 0.34)'
   context.lineWidth = 1
   context.beginPath()
   context.moveTo(72, y)
@@ -264,7 +280,7 @@ export function drawFooter(
   context.fillStyle = palette.muted
   context.font = '500 12px serif'
   context.fillText(
-    'RIDER–WAITE SMITH  ·  A PROMPT FOR REFLECTION',
+    'RIDER–WAITE SET  ·  SHODAN: WHY SAY GOODBYE?  ·  GNU v3.0  ·',
     width / 2,
     height - 34
   )
@@ -294,13 +310,13 @@ function drawBadge(
   context.save()
   context.fillStyle = palette.panel
   context.strokeStyle = palette.gold
-  context.lineWidth = 2
+  context.lineWidth = 1
   context.beginPath()
-  context.arc(x, y, 18, 0, Math.PI * 2)
+  context.arc(x, y, 14, 0, Math.PI * 2)
   context.fill()
   context.stroke()
   context.fillStyle = palette.parchment
-  context.font = '700 13px sans-serif'
+  context.font = '700 11px sans-serif'
   context.textAlign = 'center'
   context.textBaseline = 'middle'
   context.fillText(String(number).padStart(2, '0'), x, y + 1)
@@ -327,30 +343,26 @@ export function drawCard(
   context.translate(centerX, centerY)
   context.rotate(rotation)
   context.shadowColor = 'rgba(0, 0, 0, 0.6)'
-  context.shadowBlur = 24
-  context.shadowOffsetY = 12
-  roundedRect(context, -width / 2, -height / 2, width, height, 14 * scale)
-  const mat = context.createLinearGradient(-width / 2, 0, width / 2, height)
-  mat.addColorStop(0, '#f7f0e1')
-  mat.addColorStop(0.52, palette.parchment)
-  mat.addColorStop(1, '#e4d7bd')
-  context.fillStyle = mat
+  context.shadowBlur = 16
+  context.shadowOffsetY = 7
+  roundedRect(context, -width / 2, -height / 2, width, height, 9 * scale)
+  context.fillStyle = palette.parchment
   context.fill()
   context.shadowColor = 'transparent'
   context.shadowBlur = 0
   context.shadowOffsetY = 0
-  context.strokeStyle = 'rgba(17, 12, 20, 0.8)'
-  context.lineWidth = 5 * scale
+  context.strokeStyle = 'rgba(17, 12, 20, 0.72)'
+  context.lineWidth = 3 * scale
   context.stroke()
   context.strokeStyle = palette.gold
-  context.lineWidth = 1.5 * scale
+  context.lineWidth = 0.9 * scale
   roundedRect(
     context,
     -width / 2 + 3 * scale,
     -height / 2 + 3 * scale,
     width - 6 * scale,
     height - 6 * scale,
-    11 * scale
+    7 * scale
   )
   context.stroke()
 
@@ -427,24 +439,13 @@ export function drawConnector(
 ): void {
   if (points.length < 2) return
   context.save()
-  context.strokeStyle = 'rgba(221, 195, 142, 0.08)'
-  context.lineWidth = 5
+  context.strokeStyle = 'rgba(131, 201, 154, 0.22)'
+  context.lineWidth = 0.9
+  context.lineCap = 'round'
   context.beginPath()
   context.moveTo(points[0].x, points[0].y)
   points.slice(1).forEach((point) => context.lineTo(point.x, point.y))
   context.stroke()
-  context.strokeStyle = 'rgba(221, 195, 142, 0.32)'
-  context.lineWidth = 1
-  context.beginPath()
-  context.moveTo(points[0].x, points[0].y)
-  points.slice(1).forEach((point) => context.lineTo(point.x, point.y))
-  context.stroke()
-  for (const point of [points[0], points[points.length - 1]]) {
-    context.fillStyle = 'rgba(221, 195, 142, 0.64)'
-    context.beginPath()
-    context.arc(point.x, point.y, 2.4, 0, Math.PI * 2)
-    context.fill()
-  }
   context.restore()
 }
 
@@ -461,11 +462,13 @@ export function drawLegend(
   const rowsPerColumn = Math.ceil(draws.length / 2)
   const boxHeight = rowsPerColumn * rowHeight + 54
 
-  roundedRect(context, padding, top, width - padding * 2, boxHeight, 18)
-  context.fillStyle = 'rgba(24, 17, 30, 0.86)'
-  context.fill()
-  context.strokeStyle = 'rgba(221, 195, 142, 0.48)'
-  context.lineWidth = 1
+  context.strokeStyle = 'rgba(131, 201, 154, 0.24)'
+  context.lineWidth = 0.8
+  context.beginPath()
+  context.moveTo(padding, top + 2)
+  context.lineTo(width - padding, top + 2)
+  context.moveTo(padding, top + boxHeight - 2)
+  context.lineTo(width - padding, top + boxHeight - 2)
   context.stroke()
 
   context.textAlign = 'center'

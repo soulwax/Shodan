@@ -59,7 +59,7 @@ export function buildDivinationEmbed(
     })
   )
   embed.setFooter({
-    text: `Voice: ${wholesome ? 'Kind, perceptive friend' : persona.name}\nTake what resonates and leave what doesn’t. This is a prompt for reflection.\n\nSeed: ${replaySeed}`
+    text: `Voice: ${wholesome ? 'Kind, perceptive friend' : persona.name}\nTake what you find relatable, discard the rest. \n\nSeed: ${replaySeed}`
   })
   return embed
 }
