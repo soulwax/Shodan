@@ -50,6 +50,8 @@ test('formatColorRoleName uses ✦ and strips legacy or repeated markers', () =>
   assert.equal(formatColorRoleName('✦ Crimson'), '✦ Crimson');
   assert.equal(formatColorRoleName('✧ Emerald'), '✦ Emerald');
   assert.equal(formatColorRoleName('🎨 Sky Blue'), '✦ Sky Blue');
+  assert.equal(formatColorRoleName('color-crimson'), '✦ crimson');
+  assert.equal(formatColorRoleName('colour: Sapphire'), '✦ Sapphire');
   assert.equal(formatColorRoleName('  ✦   Purple  '), '✦ Purple');
 });
 
