@@ -25,6 +25,7 @@ import { withAIRequestContext } from '../../services/ai-context';
 import { logger } from '../../utils/logger';
 import { handleImageRemixModal, isImageRemixModal } from '../../commands/fun/remix-image-message';
 import { handleJournalCaptureModal, isJournalCaptureModal } from '../../commands/dnd/save-to-journal';
+import { handleColorButton, handleColorSelectMenu, isColorButton, isColorSelectMenu } from '../../services/color-roles';
 
 // commandName -> userId -> expiry timestamp (ms)
 const cooldowns = new Collection<string, Collection<string, number>>();
@@ -43,6 +44,16 @@ const interactionCreateEvent: Event = {
           handleJournalCaptureModal(interaction)
         );
       }
+      return;
+    }
+
+    if (interaction.isStringSelectMenu() && isColorSelectMenu(interaction.customId)) {
+      await handleColorSelectMenu(interaction);
+      return;
+    }
+
+    if (interaction.isButton() && isColorButton(interaction.customId)) {
+      await handleColorButton(interaction);
       return;
     }
 

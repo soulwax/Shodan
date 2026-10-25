@@ -14,6 +14,8 @@ const descriptions: Record<string, string> = {
   avatar: 'Show a member’s avatar.',
   balance: 'Check your five server campaign coin balances.',
   banned: 'List members banned from this server.',
+  color: 'Switch, browse, or remove your server color role.',
+  colour: 'Switch, browse, or remove your server colour role.',
   character: 'Use `/character init`, `read`, `ask`, `remember`, `change`, or `hp` for your saved sheet.',
   coinflip: 'Flip a coin.',
   compliment: 'Send a longer compliment for yourself or others, using their recent posts with opt-in.',
@@ -54,7 +56,7 @@ const groups: Array<{ name: string; commands: string[] }> = [
   { name: '⚔️ D&D · Encounters & bank', commands: ['encounter', 'quest', 'npc', 'store', 'withdraw', 'balance'] },
   { name: '🔮 Tarot', commands: ['divine'] },
   { name: '🎲 Fun & AI', commands: ['roll', 'dice', 'coinflip', 'describe', 'image', 'speak', 'roast', 'compliment', 'fortune', 'ship'] },
-  { name: '🛠️ Server utilities', commands: ['avatar', 'echo', 'ping', 'privacy', 'history-backfill', 'join', 'help', 'example'] },
+  { name: '🛠️ Server utilities', commands: ['avatar', 'color', 'colour', 'echo', 'ping', 'privacy', 'history-backfill', 'join', 'help', 'example'] },
   { name: '🛡️ Moderation', commands: ['purge', 'banned', 'members'] }
 ];
 

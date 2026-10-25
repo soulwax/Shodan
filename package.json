@@ -30,7 +30,9 @@
     "prepare": "prisma generate",
     "go": "pnpm install --frozen-lockfile && pnpm prisma:migrate:deploy && pnpm build && pnpm pm2:restart",
     "test:dnd-currency": "pnpm build && node --test tests/dnd-currency.test.cjs",
-    "test:north-star": "pnpm build && node --test tests/north-star.test.cjs"
+    "test:north-star": "pnpm build && node --test tests/north-star.test.cjs",
+    "test:color-roles": "pnpm build && node --test tests/color-roles.test.cjs",
+    "test": "pnpm build && node --test tests/*.test.cjs"
   },
   "dependencies": {
     "@androz2091/discord-invites-tracker": "^1.2.3",
