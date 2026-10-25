@@ -435,110 +435,134 @@ export function createColorPickerComponents(
 export async function handleColorSelectMenu(
   interaction: StringSelectMenuInteraction
 ): Promise<void> {
-  if (!interaction.guild) {
-    await interaction.reply({ content: 'Color roles can only be used inside a server.', ephemeral: true });
-    return;
-  }
+  try {
+    if (!interaction.guild) {
+      await interaction.reply({ content: 'Color roles can only be used inside a server.', ephemeral: true });
+      return;
+    }
 
-  await interaction.deferReply({ ephemeral: true });
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ ephemeral: true });
+    }
 
-  const member =
-    interaction.member instanceof GuildMember
-      ? interaction.member
-      : await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+    const member =
+      interaction.member instanceof GuildMember
+        ? interaction.member
+        : await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
 
-  if (!member) {
-    await interaction.editReply({ content: 'Could not fetch your server member data.' });
-    return;
-  }
+    if (!member) {
+      await interaction.editReply({ content: 'Could not fetch your server member data.' });
+      return;
+    }
 
-  const selectedValue = interaction.values[0];
+    const selectedValue = interaction.values[0];
 
-  if (selectedValue === 'remove') {
-    const result = await removeUserColorRole(interaction.guild, member);
+    if (selectedValue === 'remove') {
+      const result = await removeUserColorRole(interaction.guild, member);
+      if (!result.success) {
+        await interaction.editReply({ content: `❌ ${result.error}` });
+        return;
+      }
+      if (!result.removedRoles || result.removedRoles.length === 0) {
+        await interaction.editReply({ content: 'You do not currently have an active color role.' });
+        return;
+      }
+      const removedNames = result.removedRoles.map(r => `**${r.name}**`).join(', ');
+      await interaction.editReply({ content: `✅ Removed your color role (${removedNames}).` });
+      return;
+    }
+
+    const paletteColor = findPaletteColor(selectedValue);
+    if (!paletteColor) {
+      await interaction.editReply({ content: '❌ Selected color is invalid or unknown.' });
+      return;
+    }
+
+    const result = await switchUserColorRole(interaction.guild, member, {
+      name: paletteColor.name,
+      hex: paletteColor.hex,
+      colorNumber: paletteColor.colorNumber
+    });
+
     if (!result.success) {
       await interaction.editReply({ content: `❌ ${result.error}` });
       return;
     }
-    if (!result.removedRoles || result.removedRoles.length === 0) {
-      await interaction.editReply({ content: 'You do not currently have an active color role.' });
-      return;
+
+    const embed = new EmbedBuilder()
+      .setColor(result.role?.color || paletteColor.colorNumber)
+      .setTitle('✦ Color Role Updated')
+      .setTimestamp();
+
+    if (result.alreadyHad) {
+      embed.setDescription(`You already have the **${result.role?.name}** color role!`);
+    } else {
+      let desc = `Switched your color role to **${result.role?.name}**!`;
+      if (result.removedRoles && result.removedRoles.length > 0) {
+        const removedText = result.removedRoles.map(r => `**${r.name}**`).join(', ');
+        desc += `\nReplaced previous role: ${removedText}`;
+      }
+      embed.setDescription(desc);
     }
-    const removedNames = result.removedRoles.map(r => `**${r.name}**`).join(', ');
-    await interaction.editReply({ content: `✅ Removed your color role (${removedNames}).` });
-    return;
-  }
 
-  const paletteColor = findPaletteColor(selectedValue);
-  if (!paletteColor) {
-    await interaction.editReply({ content: '❌ Selected color is invalid or unknown.' });
-    return;
-  }
-
-  const result = await switchUserColorRole(interaction.guild, member, {
-    name: paletteColor.name,
-    hex: paletteColor.hex,
-    colorNumber: paletteColor.colorNumber
-  });
-
-  if (!result.success) {
-    await interaction.editReply({ content: `❌ ${result.error}` });
-    return;
-  }
-
-  const embed = new EmbedBuilder()
-    .setColor(result.role?.color || paletteColor.colorNumber)
-    .setTitle('✦ Color Role Updated')
-    .setTimestamp();
-
-  if (result.alreadyHad) {
-    embed.setDescription(`You already have the **${result.role?.name}** color role!`);
-  } else {
-    let desc = `Switched your color role to **${result.role?.name}**!`;
-    if (result.removedRoles && result.removedRoles.length > 0) {
-      const removedText = result.removedRoles.map(r => `**${r.name}**`).join(', ');
-      desc += `\nReplaced previous role: ${removedText}`;
+    await interaction.editReply({ embeds: [embed] });
+  } catch (err) {
+    logger.error('Error handling color select menu:', err);
+    const msg = 'An unexpected error occurred while updating your color role.';
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply({ content: `❌ ${msg}` }).catch(() => null);
+    } else {
+      await interaction.reply({ content: `❌ ${msg}`, ephemeral: true }).catch(() => null);
     }
-    embed.setDescription(desc);
   }
-
-  await interaction.editReply({ embeds: [embed] });
 }
 
 /**
  * Handles button interaction from the color picker ("Remove Color").
  */
 export async function handleColorButton(interaction: ButtonInteraction): Promise<void> {
-  if (!interaction.guild) {
-    await interaction.reply({ content: 'Color roles can only be used inside a server.', ephemeral: true });
-    return;
+  try {
+    if (!interaction.guild) {
+      await interaction.reply({ content: 'Color roles can only be used inside a server.', ephemeral: true });
+      return;
+    }
+
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ ephemeral: true });
+    }
+
+    const member =
+      interaction.member instanceof GuildMember
+        ? interaction.member
+        : await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+
+    if (!member) {
+      await interaction.editReply({ content: 'Could not fetch your server member data.' });
+      return;
+    }
+
+    const result = await removeUserColorRole(interaction.guild, member);
+    if (!result.success) {
+      await interaction.editReply({ content: `❌ ${result.error}` });
+      return;
+    }
+
+    if (!result.removedRoles || result.removedRoles.length === 0) {
+      await interaction.editReply({ content: 'You do not currently have an active color role.' });
+      return;
+    }
+
+    const removedNames = result.removedRoles.map(r => `**${r.name}**`).join(', ');
+    await interaction.editReply({ content: `✅ Removed your color role (${removedNames}).` });
+  } catch (err) {
+    logger.error('Error handling color button:', err);
+    const msg = 'An unexpected error occurred while removing your color role.';
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply({ content: `❌ ${msg}` }).catch(() => null);
+    } else {
+      await interaction.reply({ content: `❌ ${msg}`, ephemeral: true }).catch(() => null);
+    }
   }
-
-  await interaction.deferReply({ ephemeral: true });
-
-  const member =
-    interaction.member instanceof GuildMember
-      ? interaction.member
-      : await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
-
-  if (!member) {
-    await interaction.editReply({ content: 'Could not fetch your server member data.' });
-    return;
-  }
-
-  const result = await removeUserColorRole(interaction.guild, member);
-  if (!result.success) {
-    await interaction.editReply({ content: `❌ ${result.error}` });
-    return;
-  }
-
-  if (!result.removedRoles || result.removedRoles.length === 0) {
-    await interaction.editReply({ content: 'You do not currently have an active color role.' });
-    return;
-  }
-
-  const removedNames = result.removedRoles.map(r => `**${r.name}**`).join(', ');
-  await interaction.editReply({ content: `✅ Removed your color role (${removedNames}).` });
 }
 
 /**
@@ -547,47 +571,51 @@ export async function handleColorButton(interaction: ButtonInteraction): Promise
 export async function handleColorAutocomplete(
   interaction: AutocompleteInteraction
 ): Promise<void> {
-  const focused = interaction.options.getFocused().trim().toLowerCase();
-  const results: { name: string; value: string }[] = [];
+  try {
+    const focused = interaction.options.getFocused().trim().toLowerCase();
+    const results: { name: string; value: string }[] = [];
 
-  // If user is typing a hex code, suggest it as a custom hex option
-  if (focused.startsWith('#') || /^[0-9a-f]{3,6}$/i.test(focused)) {
-    const parsed = parseHexColor(focused);
-    if (parsed) {
-      results.push({
-        name: `✦ Custom Hex: ${parsed.hex}`,
-        value: parsed.hex
-      });
+    // If user is typing a hex code, suggest it as a custom hex option
+    if (focused.startsWith('#') || /^[0-9a-f]{3,6}$/i.test(focused)) {
+      const parsed = parseHexColor(focused);
+      if (parsed) {
+        results.push({
+          name: `✦ Custom Hex: ${parsed.hex}`,
+          value: parsed.hex
+        });
+      }
     }
-  }
 
-  // Filter matching colors from palette
-  const matching = COLOR_PALETTE.filter(
-    c =>
-      c.name.toLowerCase().includes(focused) ||
-      c.id.toLowerCase().includes(focused) ||
-      c.hex.toLowerCase().includes(focused)
-  );
+    // Filter matching colors from palette
+    const matching = COLOR_PALETTE.filter(
+      c =>
+        c.name.toLowerCase().includes(focused) ||
+        c.id.toLowerCase().includes(focused) ||
+        c.hex.toLowerCase().includes(focused)
+    );
 
-  for (const c of matching) {
-    if (results.length >= 25) break;
-    results.push({
-      name: `${c.emoji} ${c.name} (${c.hex})`,
-      value: c.id
-    });
-  }
-
-  // If no match was found, show top preset colors
-  if (results.length === 0) {
-    for (const c of COLOR_PALETTE.slice(0, 25)) {
+    for (const c of matching) {
+      if (results.length >= 25) break;
       results.push({
         name: `${c.emoji} ${c.name} (${c.hex})`,
         value: c.id
       });
     }
-  }
 
-  await interaction.respond(results.slice(0, 25));
+    // If no match was found, show top preset colors
+    if (results.length === 0) {
+      for (const c of COLOR_PALETTE.slice(0, 25)) {
+        results.push({
+          name: `${c.emoji} ${c.name} (${c.hex})`,
+          value: c.id
+        });
+      }
+    }
+
+    await interaction.respond(results.slice(0, 25));
+  } catch (err) {
+    logger.debug('Could not send color autocomplete response:', err);
+  }
 }
 
 /**
