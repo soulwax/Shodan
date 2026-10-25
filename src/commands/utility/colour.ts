@@ -18,7 +18,6 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 import { ExtendedClient } from '../../types/client';
 import { Command } from '../../types/command';
-import { COLOR_PALETTE } from '../../data/colors';
 import { executeColorCommand } from '../../services/color-roles';
 
 const colourCommand: Command = {
@@ -29,19 +28,13 @@ const colourCommand: Command = {
       sub
         .setName('switch')
         .setDescription('Switch your colour role or another member’s colour role.')
-        .addStringOption(option => {
+        .addStringOption(option =>
           option
             .setName('colour')
-            .setDescription('Choose a palette colour or enter a hex code (e.g. #3498DB).')
-            .setRequired(false);
-          for (const color of COLOR_PALETTE) {
-            option.addChoices({
-              name: `${color.emoji} ${color.name} (${color.hex})`,
-              value: color.id
-            });
-          }
-          return option;
-        })
+            .setDescription('Choose a preset colour, search, or enter a hex code (e.g. #3498DB).')
+            .setAutocomplete(true)
+            .setRequired(false)
+        )
         .addRoleOption(option =>
           option
             .setName('role')
@@ -87,4 +80,3 @@ const colourCommand: Command = {
 };
 
 export default colourCommand;
-

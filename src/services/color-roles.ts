@@ -17,6 +17,7 @@
 
 import {
   ActionRowBuilder,
+  AutocompleteInteraction,
   ButtonBuilder,
   ButtonInteraction,
   ButtonStyle,
@@ -40,10 +41,15 @@ import {
 import { logger } from '../utils/logger';
 
 export const COLOR_SELECT_CUSTOM_ID = 'color_role_select';
+export const COLOR_SELECT_WARM_ID = 'color_role_select_warm';
+export const COLOR_SELECT_COOL_ID = 'color_role_select_cool';
 export const COLOR_REMOVE_CUSTOM_ID = 'color_role_remove';
 
 export function isColorSelectMenu(customId: string): boolean {
-  return customId === COLOR_SELECT_CUSTOM_ID;
+  return (
+    customId === COLOR_SELECT_CUSTOM_ID ||
+    customId.startsWith('color_role_select')
+  );
 }
 
 export function isColorButton(customId: string): boolean {
@@ -323,14 +329,18 @@ export function createColorPickerEmbed(
     : 'None';
 
   const titleWord = spelling === 'colour' ? 'Colour' : 'Color';
-  const paletteLines = COLOR_PALETTE.map(
+
+  const warmHues = COLOR_PALETTE.filter(c => c.category === 'warm').map(
+    c => `${c.emoji} **${c.name}** \`${c.hex}\``
+  );
+  const coolHues = COLOR_PALETTE.filter(c => c.category === 'cool').map(
     c => `${c.emoji} **${c.name}** \`${c.hex}\``
   );
 
   return new EmbedBuilder()
     .setTitle(`✦ Server ${titleWord} Roles`)
     .setDescription(
-      `Pick a ${spelling} from the dropdown below to customize your name ${spelling} in **${guild.name}**.\n` +
+      `Pick a ${spelling} from the dropdown menus below to customize your name ${spelling} in **${guild.name}**.\n` +
       `Active ${spelling} roles prefixed with **✦** (or legacy **✧**) will be replaced automatically.`
     )
     .setColor(currentRoles[0]?.color || 0x15999f)
@@ -341,40 +351,65 @@ export function createColorPickerEmbed(
         inline: false
       },
       {
-        name: `Available Palette (${COLOR_PALETTE.length} hues)`,
-        value: paletteLines.join('\n'),
-        inline: false
+        name: `🔥 Warm & Vibrant Hues (${warmHues.length})`,
+        value: warmHues.join('\n'),
+        inline: true
+      },
+      {
+        name: `❄️ Cool & Earthy Hues (${coolHues.length})`,
+        value: coolHues.join('\n'),
+        inline: true
       }
     )
-    .setFooter({ text: `Use /${spelling} switch [${spelling}] to change directly anytime.` });
+    .setFooter({ text: `Total: ${COLOR_PALETTE.length} presets · Use /${spelling} switch [${spelling}] anytime.` });
 }
 
 /**
- * Builds the component rows (select menu + remove button) for the interactive picker.
+ * Builds the component rows (select menus + remove button) for the interactive picker.
  */
 export function createColorPickerComponents(
   spelling: 'color' | 'colour' = 'color'
 ): ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] {
   const titleWord = spelling === 'colour' ? 'Colour' : 'Color';
 
-  const selectOptions = COLOR_PALETTE.map(c => ({
+  const warmColors = COLOR_PALETTE.filter(c => c.category === 'warm');
+  const coolColors = COLOR_PALETTE.filter(c => c.category === 'cool');
+
+  const warmOptions = warmColors.map(c => ({
     label: c.name,
     value: c.id,
     description: `Hex: ${c.hex}`,
     emoji: c.emoji
   }));
-
-  selectOptions.push({
+  warmOptions.push({
     label: `Remove ${titleWord}`,
     value: 'remove',
     description: `Clear your active ${spelling} role`,
     emoji: '❌'
   });
 
-  const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId(COLOR_SELECT_CUSTOM_ID)
-    .setPlaceholder(`✦ Select a ${spelling} role...`)
-    .addOptions(selectOptions);
+  const coolOptions = coolColors.map(c => ({
+    label: c.name,
+    value: c.id,
+    description: `Hex: ${c.hex}`,
+    emoji: c.emoji
+  }));
+  coolOptions.push({
+    label: `Remove ${titleWord}`,
+    value: 'remove',
+    description: `Clear your active ${spelling} role`,
+    emoji: '❌'
+  });
+
+  const warmMenu = new StringSelectMenuBuilder()
+    .setCustomId(COLOR_SELECT_WARM_ID)
+    .setPlaceholder(`✦ Warm & Vibrant Hues (${warmColors.length})...`)
+    .addOptions(warmOptions);
+
+  const coolMenu = new StringSelectMenuBuilder()
+    .setCustomId(COLOR_SELECT_COOL_ID)
+    .setPlaceholder(`✦ Cool & Earthy Hues (${coolColors.length})...`)
+    .addOptions(coolOptions);
 
   const removeButton = new ButtonBuilder()
     .setCustomId(COLOR_REMOVE_CUSTOM_ID)
@@ -382,10 +417,11 @@ export function createColorPickerComponents(
     .setStyle(ButtonStyle.Danger)
     .setEmoji('🗑️');
 
-  const row1 = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
-  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(removeButton);
+  const row1 = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(warmMenu);
+  const row2 = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(coolMenu);
+  const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(removeButton);
 
-  return [row1, row2];
+  return [row1, row2, row3];
 }
 
 /**
@@ -498,6 +534,55 @@ export async function handleColorButton(interaction: ButtonInteraction): Promise
 
   const removedNames = result.removedRoles.map(r => `**${r.name}**`).join(', ');
   await interaction.editReply({ content: `✅ Removed your color role (${removedNames}).` });
+}
+
+/**
+ * Autocomplete handler for /color switch and /colour switch.
+ */
+export async function handleColorAutocomplete(
+  interaction: AutocompleteInteraction
+): Promise<void> {
+  const focused = interaction.options.getFocused().trim().toLowerCase();
+  const results: { name: string; value: string }[] = [];
+
+  // If user is typing a hex code, suggest it as a custom hex option
+  if (focused.startsWith('#') || /^[0-9a-f]{3,6}$/i.test(focused)) {
+    const parsed = parseHexColor(focused);
+    if (parsed) {
+      results.push({
+        name: `✦ Custom Hex: ${parsed.hex}`,
+        value: parsed.hex
+      });
+    }
+  }
+
+  // Filter matching colors from palette
+  const matching = COLOR_PALETTE.filter(
+    c =>
+      c.name.toLowerCase().includes(focused) ||
+      c.id.toLowerCase().includes(focused) ||
+      c.hex.toLowerCase().includes(focused)
+  );
+
+  for (const c of matching) {
+    if (results.length >= 25) break;
+    results.push({
+      name: `${c.emoji} ${c.name} (${c.hex})`,
+      value: c.id
+    });
+  }
+
+  // If no match was found, show top preset colors
+  if (results.length === 0) {
+    for (const c of COLOR_PALETTE.slice(0, 25)) {
+      results.push({
+        name: `${c.emoji} ${c.name} (${c.hex})`,
+        value: c.id
+      });
+    }
+  }
+
+  await interaction.respond(results.slice(0, 25));
 }
 
 /**
@@ -648,7 +733,7 @@ export async function executeColorCommand(
             await interaction.editReply({
               content:
                 `❌ Unknown ${spelling} "**${colorInput}**".\n` +
-                `Please pick from the palette choices, enter a 6-character hex code (e.g. \`#3498DB\`), or specify an existing role.`
+                `Please pick from the preset choices, enter a 6-character hex code (e.g. \`#3498DB\`), or specify an existing role.`
             });
             return;
           }

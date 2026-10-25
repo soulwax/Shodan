@@ -25,7 +25,13 @@ import { withAIRequestContext } from '../../services/ai-context';
 import { logger } from '../../utils/logger';
 import { handleImageRemixModal, isImageRemixModal } from '../../commands/fun/remix-image-message';
 import { handleJournalCaptureModal, isJournalCaptureModal } from '../../commands/dnd/save-to-journal';
-import { handleColorButton, handleColorSelectMenu, isColorButton, isColorSelectMenu } from '../../services/color-roles';
+import {
+  handleColorAutocomplete,
+  handleColorButton,
+  handleColorSelectMenu,
+  isColorButton,
+  isColorSelectMenu
+} from '../../services/color-roles';
 
 // commandName -> userId -> expiry timestamp (ms)
 const cooldowns = new Collection<string, Collection<string, number>>();
@@ -45,6 +51,13 @@ const interactionCreateEvent: Event = {
         );
       }
       return;
+    }
+
+    if (interaction.isAutocomplete()) {
+      if (interaction.commandName === 'color' || interaction.commandName === 'colour') {
+        await handleColorAutocomplete(interaction);
+        return;
+      }
     }
 
     if (interaction.isStringSelectMenu() && isColorSelectMenu(interaction.customId)) {

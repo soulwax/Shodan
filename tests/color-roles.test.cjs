@@ -19,12 +19,15 @@ const {
   findExistingColorRole,
   isColorSelectMenu,
   isColorButton,
+  handleColorAutocomplete,
   COLOR_SELECT_CUSTOM_ID,
+  COLOR_SELECT_WARM_ID,
+  COLOR_SELECT_COOL_ID,
   COLOR_REMOVE_CUSTOM_ID
 } = require('../dist/services/color-roles.js');
 
-test('COLOR_PALETTE contains valid and unique colors with hex and emoji', () => {
-  assert.ok(COLOR_PALETTE.length >= 10, 'Palette has at least 10 colors');
+test('COLOR_PALETTE contains valid and unique colors with hex, emoji and categories', () => {
+  assert.ok(COLOR_PALETTE.length >= 30, 'Palette has at least 30 preset colors');
   const ids = new Set();
   const names = new Set();
 
@@ -37,6 +40,7 @@ test('COLOR_PALETTE contains valid and unique colors with hex and emoji', () => 
     assert.match(color.hex, /^#[0-9A-F]{6}$/i, `Invalid hex ${color.hex}`);
     assert.ok(typeof color.colorNumber === 'number' && color.colorNumber > 0);
     assert.ok(typeof color.emoji === 'string' && color.emoji.length > 0);
+    assert.ok(color.category === 'warm' || color.category === 'cool', 'Valid category');
   }
 });
 
@@ -108,9 +112,37 @@ test('findPaletteColor matches by id or name case-insensitively', () => {
 
 test('component custom IDs matchers work correctly', () => {
   assert.ok(isColorSelectMenu(COLOR_SELECT_CUSTOM_ID));
+  assert.ok(isColorSelectMenu(COLOR_SELECT_WARM_ID));
+  assert.ok(isColorSelectMenu(COLOR_SELECT_COOL_ID));
   assert.ok(!isColorSelectMenu('other_select'));
   assert.ok(isColorButton(COLOR_REMOVE_CUSTOM_ID));
   assert.ok(!isColorButton('other_button'));
+});
+
+test('handleColorAutocomplete filters matching colors and custom hex', async () => {
+  let responded = null;
+  const mockInteraction = (query) => ({
+    options: {
+      getFocused: () => query
+    },
+    respond: async (items) => {
+      responded = items;
+    }
+  });
+
+  // Query matching multiple colors
+  await handleColorAutocomplete(mockInteraction('pin'));
+  assert.ok(responded);
+  assert.ok(responded.length > 0 && responded.length <= 25);
+  assert.ok(responded.some(r => r.value === 'rose' || r.value === 'hot_pink' || r.value === 'fuchsia'));
+
+  // Query matching custom hex
+  await handleColorAutocomplete(mockInteraction('#123456'));
+  assert.ok(responded.some(r => r.name.includes('#123456') && r.value === '#123456'));
+
+  // Empty query returns default 25 suggestions
+  await handleColorAutocomplete(mockInteraction(''));
+  assert.equal(responded.length, 25);
 });
 
 // Helper for building mock Discord objects
