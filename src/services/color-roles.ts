@@ -91,7 +91,11 @@ export function findExistingColorRole(guild: Guild, target: SwitchColorTarget): 
   if (target.role) return target.role;
 
   const formattedName = formatColorRoleName(target.name).toLowerCase();
-  const rawName = target.name.toLowerCase();
+  const cleanName = target.name
+    .replace(/^(color|colour)[-:\s]+/iu, '')
+    .replace(/^[✦✧🎨\s:]+/u, '')
+    .trim()
+    .toLowerCase();
 
   // 1. Check exact formatted name (✦ Name)
   const exactRole = guild.roles.cache.find(r => r.name.toLowerCase() === formattedName);
@@ -101,11 +105,12 @@ export function findExistingColorRole(guild: Guild, target: SwitchColorTarget): 
   const legacyRole = guild.roles.cache.find(r => {
     const rName = r.name.toLowerCase();
     return (
-      rName === rawName ||
-      rName === `✧ ${rawName}` ||
-      rName === `🎨 ${rawName}` ||
-      rName === `color-${rawName}` ||
-      rName === `colour-${rawName}`
+      rName === cleanName ||
+      rName === `✦ ${cleanName}` ||
+      rName === `✧ ${cleanName}` ||
+      rName === `🎨 ${cleanName}` ||
+      rName === `color-${cleanName}` ||
+      rName === `colour-${cleanName}`
     );
   });
   if (legacyRole) return legacyRole;
@@ -220,7 +225,7 @@ export async function switchUserColorRole(
   const rolesToRemove = existingColorRoles.filter(r => r.id !== targetRole.id);
 
   // Check if bot can remove all existing color roles
-  for (const [, r] of rolesToRemove) {
+  for (const r of rolesToRemove.values()) {
     if (botMember.roles.highest.position <= r.position) {
       return {
         success: false,
@@ -297,7 +302,7 @@ export async function removeUserColorRole(
     return { success: true, removedRoles: [] };
   }
 
-  for (const [, r] of existingColorRoles) {
+  for (const r of existingColorRoles.values()) {
     if (botMember.roles.highest.position <= r.position) {
       return {
         success: false,

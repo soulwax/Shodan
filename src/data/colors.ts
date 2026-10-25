@@ -79,7 +79,10 @@ export const COLOR_PALETTE: ColorDefinition[] = [
 ];
 
 export function formatColorRoleName(name: string): string {
-  const clean = name.replace(/^[✦✧🎨\s:]+/u, '').trim();
+  const clean = name
+    .replace(/^(color|colour)[-:\s]+/iu, '')
+    .replace(/^[✦✧🎨\s:]+/u, '')
+    .trim();
   return `${COLOR_ROLE_MARKER} ${clean}`;
 }
 
