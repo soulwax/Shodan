@@ -33,8 +33,8 @@ function drawSingleCard(
   images: Array<CardImage | null>,
   spread: DivinationSpread
 ): Buffer {
-  const width = 850
-  const height = 1110
+  const width = 650
+  const height = 1090
   const canvas = createCanvas(width, height)
   const context = canvas.getContext('2d')
   drawBackground(context, width, height)
@@ -63,15 +63,15 @@ function drawLinearSpread(
   images: Array<CardImage | null>,
   spread: DivinationSpread
 ): Buffer {
-  const width = 1470
-  const height = 850
+  const width = 1200
+  const height = 830
   const canvas = createCanvas(width, height)
   const context = canvas.getContext('2d')
   drawBackground(context, width, height)
   drawHeader(context, spread, width)
   const cardWidth = 330
   const cardHeight = 538
-  const centers = [270, width / 2, width - 270]
+  const centers = [220, width / 2, width - 220]
   draws.forEach((draw, index) => {
     drawPositionLabel(context, draw, centers[index], 207, cardWidth + 32)
     drawCard(
@@ -94,14 +94,14 @@ function drawDecisionSpread(
   images: Array<CardImage | null>,
   spread: DivinationSpread
 ): Buffer {
-  const width = 1580
-  const height = 1260
+  const width = 1100
+  const height = 1190
   const canvas = createCanvas(width, height)
   const context = canvas.getContext('2d')
   drawBackground(context, width, height)
   drawHeader(context, spread, width)
 
-  const sideX = 240
+  const sideX = 205
   const centerX = width / 2
   const rightX = width - sideX
   const cardWidth = 225
@@ -111,23 +111,23 @@ function drawDecisionSpread(
   context.fillStyle = palette.muted
   context.font = '700 15px sans-serif'
   context.fillText('OPTION A', sideX, 190)
-  context.fillText('DECISION LENS', centerX, 422)
+  context.fillText('DECISION LENS', centerX, 400)
   context.fillText('OPTION B', rightX, 190)
   drawConnector(context, [
-    { x: sideX + cardWidth / 2 + 16, y: 680 },
-    { x: centerX - cardWidth / 2 - 22, y: 680 }
+    { x: sideX + cardWidth / 2 + 16, y: 645 },
+    { x: centerX - cardWidth / 2 - 22, y: 645 }
   ])
   drawConnector(context, [
-    { x: centerX + cardWidth / 2 + 22, y: 680 },
-    { x: rightX - cardWidth / 2 - 16, y: 680 }
+    { x: centerX + cardWidth / 2 + 22, y: 645 },
+    { x: rightX - cardWidth / 2 - 16, y: 645 }
   ])
 
   const points = [
-    { x: sideX, y: 430 },
-    { x: sideX, y: 905 },
-    { x: rightX, y: 430 },
-    { x: rightX, y: 905 },
-    { x: centerX, y: 680 }
+    { x: sideX, y: 420 },
+    { x: sideX, y: 870 },
+    { x: rightX, y: 420 },
+    { x: rightX, y: 870 },
+    { x: centerX, y: 645 }
   ]
   draws.forEach((draw, index) => {
     drawPositionLabel(
@@ -157,8 +157,8 @@ function drawRelationshipSpread(
   images: Array<CardImage | null>,
   spread: DivinationSpread
 ): Buffer {
-  const width = 1560
-  const height = 1380
+  const width = 1100
+  const height = 1280
   const canvas = createCanvas(width, height)
   const context = canvas.getContext('2d')
   drawBackground(context, width, height)
@@ -167,10 +167,10 @@ function drawRelationshipSpread(
   const cardWidth = 250
   const cardHeight = 408
   const points = [
-    { x: 315, y: 735 },
-    { x: width - 315, y: 735 },
-    { x: width / 2, y: 425 },
-    { x: width / 2, y: 1080 }
+    { x: 230, y: 700 },
+    { x: width - 230, y: 700 },
+    { x: width / 2, y: 410 },
+    { x: width / 2, y: 1000 }
   ]
   drawConnector(context, [points[2], points[0]])
   drawConnector(context, [points[2], points[1]])
@@ -205,8 +205,8 @@ function drawCelticCross(
   images: Array<CardImage | null>,
   spread: DivinationSpread
 ): Buffer {
-  const width = 1560
-  const height = 1690
+  const width = 1280
+  const height = 1600
   const canvas = createCanvas(width, height)
   const context = canvas.getContext('2d')
   drawBackground(context, width, height)
@@ -233,7 +233,7 @@ function drawCelticCross(
     { x: 715 - mainWidth / 2 - 12, y: crossCenter.y }
   ])
 
-  const staffX = 1200
+  const staffX = 1050
   const staffWidth = 160
   const staffHeight = 261
   const staffY = [1180, 910, 640, 370]
@@ -269,7 +269,7 @@ function drawCelticCross(
     )
   })
 
-  drawLegend(context, draws, width, 1380)
+  drawLegend(context, draws, width, 1320)
   drawFooter(context, width, height)
   return canvas.toBuffer('image/png')
 }

@@ -18,15 +18,15 @@ import type { DrawnCard } from '../../services/divination-reading'
 import type { CardImage, DrawingContext, Point } from './types'
 
 export const palette = {
-  backgroundTop: '#07110d',
-  backgroundBottom: '#0b1912',
-  panel: '#101b15',
-  panelHighlight: '#19271e',
-  gold: '#83c99a',
-  goldDim: '#426b50',
+  backgroundTop: '#07101d',
+  backgroundBottom: '#101e2c',
+  panel: '#142333',
+  panelHighlight: '#22384a',
+  gold: '#b8dce9',
+  goldDim: '#668b9e',
   parchment: '#f4ecda',
   text: '#f7f1e7',
-  muted: '#b8c8bc',
+  muted: '#b4cbd5',
   purple: '#a77cc0'
 }
 
@@ -80,87 +80,35 @@ export function drawBackground(
   context.fillStyle = gradient
   context.fillRect(0, 0, width, height)
 
-  drawWaveThreads(context, width, height)
-  drawBlueprintGrid(context, width, height)
+  drawMist(context, width, height)
   drawFiligreeCorners(context, width, height)
 
-  context.strokeStyle = 'rgba(131, 201, 154, 0.28)'
+  context.strokeStyle = 'rgba(184, 220, 233, 0.28)'
   context.lineWidth = 0.8
   clippedRect(context, 24, 24, width - 48, height - 48, 24)
   context.stroke()
 }
 
-/** Fine deterministic thread lines form a woven wave texture beneath the cards. */
-function drawWaveThreads(
-  context: DrawingContext,
-  width: number,
-  height: number
-): void {
+/** Layered translucent glows suggest drifting mist without obscuring the cards. */
+function drawMist(context: DrawingContext, width: number, height: number): void {
+  const clouds = [
+    { x: 0.16, y: 0.24, radius: 0.52, alpha: 0.17 },
+    { x: 0.83, y: 0.43, radius: 0.56, alpha: 0.13 },
+    { x: 0.35, y: 0.76, radius: 0.54, alpha: 0.15 },
+    { x: 0.88, y: 0.91, radius: 0.4, alpha: 0.1 }
+  ]
   context.save()
-  context.strokeStyle = 'rgba(77, 157, 104, 0.038)'
-  context.lineWidth = 0.48
-  context.lineCap = 'round'
-
-  const spacing = 7
-  const step = 18
-  for (let row = -1; row * spacing < height; row += 1) {
-    const baseline = row * spacing
-    const phase = row * 0.075
-    for (const threadOffset of [-0.8, 0.8]) {
-      context.beginPath()
-      for (let x = 0; x <= width + step; x += step) {
-        const progress = x / width
-        const broadWave = Math.sin(progress * Math.PI * 3 + phase) * 2.8
-        const fineWave = Math.sin(progress * Math.PI * 9 - phase * 0.72) * 0.65
-        const y = baseline + broadWave + fineWave + threadOffset
-        if (x === 0) context.moveTo(x, y)
-        else context.lineTo(x, y)
-      }
-      context.stroke()
-    }
+  for (const cloud of clouds) {
+    const x = width * cloud.x
+    const y = height * cloud.y
+    const radius = Math.max(width, height) * cloud.radius
+    const mist = context.createRadialGradient(x, y, 0, x, y, radius)
+    mist.addColorStop(0, `rgba(167, 211, 231, ${cloud.alpha})`)
+    mist.addColorStop(0.45, `rgba(119, 170, 198, ${cloud.alpha * 0.45})`)
+    mist.addColorStop(1, 'rgba(91, 139, 169, 0)')
+    context.fillStyle = mist
+    context.fillRect(0, 0, width, height)
   }
-
-  for (let column = -1; column * spacing < width; column += 1) {
-    const baseline = column * spacing
-    const phase = column * 0.075
-    for (const threadOffset of [-0.8, 0.8]) {
-      context.beginPath()
-      for (let y = 0; y <= height + step; y += step) {
-        const progress = y / height
-        const broadWave = Math.sin(progress * Math.PI * 3 + phase) * 2.8
-        const fineWave = Math.sin(progress * Math.PI * 9 - phase * 0.72) * 0.65
-        const x = baseline + broadWave + fineWave + threadOffset
-        if (y === 0) context.moveTo(x, y)
-        else context.lineTo(x, y)
-      }
-      context.stroke()
-    }
-  }
-
-  context.restore()
-}
-
-/** Blueprint grid is measured in nominal 96-pixel inches. */
-function drawBlueprintGrid(
-  context: DrawingContext,
-  width: number,
-  height: number
-): void {
-  const inch = 96
-  const offset = inch / 2
-  context.save()
-  context.strokeStyle = 'rgba(92, 190, 126, 0.17)'
-  context.lineWidth = 0.7
-  context.beginPath()
-  for (let x = offset; x < width; x += inch) {
-    context.moveTo(x, 24)
-    context.lineTo(x, height - 24)
-  }
-  for (let y = offset; y < height; y += inch) {
-    context.moveTo(24, y)
-    context.lineTo(width - 24, y)
-  }
-  context.stroke()
   context.restore()
 }
 
@@ -198,7 +146,7 @@ function drawFiligreeCorners(
     { x: inset, y: height - inset, sx: 1, sy: -1 }
   ]
   context.save()
-  context.strokeStyle = 'rgba(131, 201, 154, 0.34)'
+  context.strokeStyle = 'rgba(184, 220, 233, 0.34)'
   context.lineWidth = 0.7
   for (const corner of corners) {
     context.save()
@@ -254,7 +202,7 @@ export function drawHeader(
   context.fillText(spread.description, width / 2, 137, width - 150)
 
   const y = 159
-  context.strokeStyle = 'rgba(131, 201, 154, 0.34)'
+  context.strokeStyle = 'rgba(184, 220, 233, 0.34)'
   context.lineWidth = 1
   context.beginPath()
   context.moveTo(72, y)
@@ -439,7 +387,7 @@ export function drawConnector(
 ): void {
   if (points.length < 2) return
   context.save()
-  context.strokeStyle = 'rgba(131, 201, 154, 0.22)'
+  context.strokeStyle = 'rgba(184, 220, 233, 0.22)'
   context.lineWidth = 0.9
   context.lineCap = 'round'
   context.beginPath()
@@ -462,7 +410,7 @@ export function drawLegend(
   const rowsPerColumn = Math.ceil(draws.length / 2)
   const boxHeight = rowsPerColumn * rowHeight + 54
 
-  context.strokeStyle = 'rgba(131, 201, 154, 0.24)'
+  context.strokeStyle = 'rgba(184, 220, 233, 0.24)'
   context.lineWidth = 0.8
   context.beginPath()
   context.moveTo(padding, top + 2)
